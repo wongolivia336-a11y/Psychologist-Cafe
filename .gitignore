@@ -1,0 +1,20 @@
+node_modules
+.next
+out
+.env
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+
+# 构建期生成的检索索引
+data/index.json
+
+# 下载的公有领域原著：靠 `npm run fetch` 从 data/sources.json 重新获取，不随仓库分发
+data/corpus/sources/
+
+# 自行取得授权的文本：绝不入库
+data/corpus/licensed/
+
+# 本地日志
+dev.log
+install.log

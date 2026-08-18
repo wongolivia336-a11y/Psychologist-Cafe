@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+/* ── 绣湖式调色板：低饱和、暗、暖光只出现在光源处 ───────────── */
+:root {
+  --ink: #14100d; /* 底：近黑的褐 */
+  --ink-2: #1d1814; /* 墙面 */
+  --moss: #232c24; /* 暗绿，绣湖的招牌色 */
+  --moss-2: #37452f;
+  --wood: #4a3a2c; /* 桌面 */
+  --wood-2: #6b5136;
+  --amber: #c8974a; /* 唯一的暖光：烛火 */
+  --amber-soft: #e0b877;
+  --blood: #6e2f2a; /* 深红，克制使用 */
+  --bone: #ded3c3; /* 正文 */
+  --bone-dim: #8c8073; /* 次要文字 */
+  --edge: #2e2620;
+}
+
+html,
+body {
+  background: var(--ink);
+  color: var(--bone);
+}
+
+body {
+  font-family: "Songti SC", "Noto Serif SC", "Source Han Serif SC", Georgia,
+    serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 颗粒噪点：整个产品的质感来源，铺在最上层且不吃事件 */
+.grain::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.16;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* 暗角：把注意力压到画面中心 */
+.vignette::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    transparent 30%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+/* 烛火呼吸：语音的可视化就是它，不做抽象光球 */
+@keyframes candle {
+  0%,
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+.candle {
+  animation: candle 3.5s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: fade-up 0.6s ease-out both;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--edge);
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

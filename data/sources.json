@@ -1,0 +1,79 @@
+{
+  "$comment": "语料源清单。active=true 的会被 npm run fetch 下载到 data/corpus/sources/。新增哲学家时在这里加条目，不要改脚本。",
+  "sources": [
+    {
+      "id": "husserl-lu-1",
+      "philosopher": "husserl",
+      "title": "Logische Untersuchungen, Erster Band: Prolegomena zur reinen Logik",
+      "author": "Edmund Husserl",
+      "year": 1900,
+      "lang": "de",
+      "license": "public-domain",
+      "licenseNote": "作者卒于 1938 年，原文出版于 1900 年，全球主要法域均已过版权期。",
+      "url": "https://archive.org/download/logischeuntersuc01hussuoft/logischeuntersuc01hussuoft_djvu.txt",
+      "sourcePage": "https://archive.org/details/logischeuntersuc01hussuoft",
+      "active": true,
+      "strip": { "kind": "archive-djvu" }
+    },
+    {
+      "id": "husserl-lu-2",
+      "philosopher": "husserl",
+      "title": "Logische Untersuchungen, Zweiter Band: Untersuchungen zur Phänomenologie und Theorie der Erkenntnis",
+      "author": "Edmund Husserl",
+      "year": 1901,
+      "lang": "de",
+      "license": "public-domain",
+      "licenseNote": "同上。第二卷含意向性、直观充实、明见性等与本产品最相关的部分。",
+      "url": "https://archive.org/download/logischeuntersu01hussgoog/logischeuntersu01hussgoog_djvu.txt",
+      "sourcePage": "https://archive.org/details/logischeuntersu01hussgoog",
+      "active": true,
+      "optional": true,
+      "strip": { "kind": "archive-djvu" }
+    },
+
+    {
+      "$comment": "以下为后续接入，先留位。跑通流程后把 active 改 true 即可。",
+      "id": "epicurus-dl-x",
+      "philosopher": "epicurus",
+      "title": "The Lives and Opinions of Eminent Philosophers, Book X (Epicurus)",
+      "author": "Diogenes Laertius",
+      "translator": "C. D. Yonge",
+      "year": 1853,
+      "lang": "en",
+      "license": "public-domain",
+      "url": "https://www.gutenberg.org/cache/epub/57342/pg57342.txt",
+      "sourcePage": "https://www.gutenberg.org/ebooks/57342",
+      "active": false,
+      "strip": { "kind": "gutenberg", "from": "LIFE OF EPICURUS", "to": "BOOK XI" }
+    },
+    {
+      "id": "freud-intro-lectures",
+      "philosopher": "freud",
+      "title": "A General Introduction to Psychoanalysis",
+      "author": "Sigmund Freud",
+      "translator": "G. Stanley Hall",
+      "year": 1920,
+      "lang": "en",
+      "license": "public-domain",
+      "url": "https://www.gutenberg.org/cache/epub/38219/pg38219.txt",
+      "sourcePage": "https://www.gutenberg.org/ebooks/38219",
+      "active": false,
+      "note": "拉康 persona 的真实语料底座（『回到弗洛伊德』）。",
+      "strip": { "kind": "gutenberg" }
+    },
+    {
+      "id": "kierkegaard-selections",
+      "philosopher": "kierkegaard",
+      "title": "Selections from the Writings of Kierkegaard",
+      "author": "Søren Kierkegaard",
+      "translator": "L. M. Hollander",
+      "year": 1923,
+      "lang": "en",
+      "license": "public-domain",
+      "url": "https://www.gutenberg.org/cache/epub/60333/pg60333.txt",
+      "sourcePage": "https://www.gutenberg.org/ebooks/60333",
+      "active": false,
+      "strip": { "kind": "gutenberg" }
+    }
+  ]
+}

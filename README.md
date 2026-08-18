@@ -1,0 +1,180 @@
+# 在场 · Philosopher's Café
+
+> 给独自吃饭的人，一顿有人在场的饭。
+
+一个陪餐产品的原型。你拍下面前这顿饭，它变成一幅插画落在桌上；对面坐着一位哲学家，
+你们一起把这顿饭吃完。插画在这段时间里慢慢上色——画完了，饭就吃完了。
+
+不是心理咨询，不是饮食记录，不是冥想 app。
+
+---
+
+## 跑起来
+
+```bash
+npm install
+cp .env.example .env.local   # 填入 ANTHROPIC_API_KEY
+npm run fetch                # 下载公有领域原著（约 2MB）
+npm run index                # 构建检索索引
+npm run dev
+```
+
+打开 http://localhost:3000 ，点亮着灯的那张桌子。
+
+> **代理**：所有 npm 脚本已带 `NODE_USE_ENV_PROXY=1`。Node 的 fetch 默认不读
+> `HTTPS_PROXY` 环境变量，没有这个开关的话下载语料和调用 API 都会超时。
+
+自检：
+
+```bash
+npm run test            # 安全层（危机识别 + 禁语过滤）18 项
+npm run test:retrieve   # 检索召回
+```
+
+### ⚠️ 已知问题：不能在 G: 盘跑生产构建
+
+`npm run dev` 在 G: 上正常。但 `npm run build` 会报：
+
+```
+Error: EISDIR: illegal operation on a directory, readlink '...'
+```
+
+原因是 G: 不是标准本地卷，对**普通文件**调 `fs.readlinkSync` 返回 `EISDIR`
+（POSIX 语义应为 `EINVAL`），而 Next 的模块解析依赖这个语义。换 Turbopack 也一样，
+因为它挂在 "Collecting page data" 阶段。
+
+- 本地要出生产包：把项目复制到 C: 盘再 `npm run build`（已实测通过，5 条路由全部产出）
+- 部署到 Vercel / Linux CI：不受影响
+
+---
+
+## 设计约束（改代码前先读这一节）
+
+这个产品面向的是进食障碍人群。这类产品设计不当，会变成一个更好看的强迫工具。
+以下不是功能取舍，是底线：
+
+| 约束 | 为什么 |
+|---|---|
+| **永不出现任何数字** | 热量、克数、体重、频次、天数。一个都不能有。数字是进食障碍大脑最好的武器。 |
+| **永不做连续打卡（streak）** | 断签在这个语境里等于羞耻螺旋。所有游戏化在这个人群里是**有害**，不是无效。 |
+| **解锁只累加、永不衰减** | 打卡惩罚缺席，解锁只奖励在场。消失三个月回来，咖啡馆和你走时一模一样。 |
+| **插画默认不存档** | 一旦能横向对比，它就变成自我审判的素材。不做时间轴、不做"回顾你的 30 顿饭"。 |
+| **角色不给饮食建议、不诊断、不打气** | 见 `src/lib/personas.ts` 的 `SHARED_FRAME`。 |
+| **对话不跨场留存** | 容器必须有边界，创伤才敢进来。 |
+
+安全实现在 `src/lib/safety.ts`：危机识别（用户输入）+ 禁语流式过滤（模型输出）。
+
+### ⚠️ 上线前必须做
+
+- [ ] 核实 `CRISIS_RESOURCES` 里的热线号码当前有效（号码会变更，不要照抄）
+- [ ] 找一位真正的进食障碍方向临床工作者，审一遍 `personas.ts` 全部话术
+- [ ] 补一个成年确认与知情说明页
+
+---
+
+## 语料与版权
+
+**这是这个项目最需要如实交代的部分。** 语料分三类，`meta.license` 区分，前端如实展示：
+
+| 类型 | 目录 | 说明 |
+|---|---|---|
+| `public-domain` | `data/corpus/sources/` | 真实原著全文，`npm run fetch` 从公开源下载。已 gitignore。 |
+| `original-summary` | `data/corpus/cards/` | 人工撰写的概念卡片。**不是原著节录**，不可作为引文出处。 |
+| `licensed-private` | `data/corpus/licensed/` | 你自行合法取得的文本。已 gitignore，不随仓库分发。 |
+
+### 各角色的语料真实性
+
+| 角色 | 语料 | 状态 |
+|---|---|---|
+| **胡塞尔** | 《逻辑研究》卷一、卷二（1900–01）德文原版全文，archive.org 扫描本 | ✅ 真实原著 |
+| 拉康 | 概念卡片 + 弗洛伊德公有领域原著 | ⚠️ 混合（v1 未启用） |
+| 梅洛-庞蒂 | 概念卡片 + 其师胡塞尔原著 | ⚠️ 混合（v1 未启用） |
+| 齐泽克 | 仅概念卡片 | ⚠️ 无原文（v1 未启用） |
+
+拉康（卒于 1981）、梅洛-庞蒂（卒于 1961）、齐泽克（在世）的著作全部在版权期内，
+**不存在合法的开源全文**。想给这些角色接入真实文本，只能自行取得授权后放进
+`data/corpus/licensed/`。
+
+新增语料源：编辑 `data/sources.json` 加一条，把 `active` 设成 `true`，重跑
+`npm run fetch && npm run index`。不需要改脚本。
+
+---
+
+## RAG 是怎么做的
+
+```
+用户提问
+  ↓
+跨语言查询扩展 (expand.ts)   中文提问 → 补上原著里真实出现的德文术语
+  ↓
+┌─────────────┬──────────────────┐
+│ BM25         │ 向量（可选）      │   两路独立召回
+│ (bm25.ts)    │ (embeddings.ts)  │
+└─────────────┴──────────────────┘
+  ↓
+RRF 融合 (retrieve.ts)        只看排名，换语料/换模型都不用重调权重
+  ↓
+注入 system prompt (prompt.ts)  带出处，前端可展开核对
+```
+
+**为什么需要查询扩展**：BM25 是词面匹配。用户用中文问，胡塞尔原著是德文，
+一个词都对不上——不扩展就是零召回。正解是多语言向量：
+
+```bash
+# .env.local 里加上，重跑 npm run index，检索自动升级为 BM25 + 向量混合
+VOYAGE_API_KEY=pa-...
+```
+
+不设也能完整跑通，只是长句语义检索弱一些。
+
+验证检索质量：
+
+```bash
+npx tsx scripts/smoke-retrieve.ts "我尝到了什么"
+```
+
+---
+
+## 目录
+
+```
+data/
+  sources.json           语料源清单（改这里加语料）
+  corpus/{sources,cards,licensed}/
+  index.json             构建产物
+scripts/
+  fetch-corpus.ts        下载公有领域原著
+  build-index.ts         分块 + BM25 统计 + 可选向量
+  smoke-retrieve.ts      检索冒烟测试
+src/
+  lib/
+    personas.ts          人格库 / 禁语框架 / 桌位与解锁
+    safety.ts            危机识别 + 禁语流式过滤
+    prompt.ts            system prompt 组装 + 缓存分块
+    rag/                 tokenize / chunk / bm25 / embeddings / expand / retrieve
+  app/
+    page.tsx             大堂（固定机位，绣湖语法）
+    table/[id]/          拼桌
+    api/chat/            SSE 流式对话
+    api/dish/            照片 → 插画要素（不识别菜名、不估份量）
+  components/
+    MealScene.tsx        拼桌场景
+    Dish.tsx             盘子插画（同时是这顿饭的计时器）
+```
+
+---
+
+## v1 的范围
+
+只点亮胡塞尔一张桌子。其余桌子有人坐，但"还不到时候"——绣湖式的锁住的门，
+是原生表达，不是缩水。
+
+要验证的是一件事：**放下一个物件、听一个怪人对着它说了十二分钟话之后，人是什么感觉。**
+
+### 还没做
+
+- 3D 建模场景（当前是 CSS/SVG 占位。方案：Blender 固定机位预渲染成分层 PNG，
+  只有盘子是唯一的 3D hero object）
+- 语音（当前是文字。声音的可视化应该是烛火呼吸，不做抽象光球）
+- 其余三位角色的 system prompt（`personas.ts` 里已留位，`system` 字段为空）
+- 胡塞尔之外的语料接入（`data/sources.json` 里已备好条目，改 `active` 即可）
