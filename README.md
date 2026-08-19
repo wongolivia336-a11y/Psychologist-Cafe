@@ -2,7 +2,7 @@
 
 > 给独自吃饭的人，一顿有人在场的饭。
 
-**[▸ 在线预览](https://psychologist-caf.vercel.app)** ｜ [一键部署](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwongolivia336-a11y%2FPsychologist-Caf-&env=ANTHROPIC_API_KEY&envDescription=Claude%20API%20key%EF%BC%8C%E7%94%A8%E4%BA%8E%E5%AF%B9%E8%AF%9D%E4%B8%8E%E8%8F%9C%E5%93%81%E8%AF%86%E5%88%AB&envLink=https%3A%2F%2Fconsole.anthropic.com%2Fsettings%2Fkeys&project-name=philosopher-cafe&repository-name=philosopher-cafe)
+**[▸ 在线预览](https://psychologist-caf.vercel.app)** ｜ [一键部署](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwongolivia336-a11y%2FPsychologist-Cafe&env=ANTHROPIC_API_KEY&envDescription=Claude%20API%20key%EF%BC%8C%E7%94%A8%E4%BA%8E%E5%AF%B9%E8%AF%9D%E4%B8%8E%E8%8F%9C%E5%93%81%E8%AF%86%E5%88%AB&envLink=https%3A%2F%2Fconsole.anthropic.com%2Fsettings%2Fkeys&project-name=philosopher-cafe&repository-name=philosopher-cafe)
 
 > 预览里点亮的是胡塞尔那一桌。没有 `ANTHROPIC_API_KEY` 时页面照常渲染，
 > 但一开口对话会报错——这是预期行为，不是坏了。
