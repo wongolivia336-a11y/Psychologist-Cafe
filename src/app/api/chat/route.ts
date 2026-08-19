@@ -7,6 +7,8 @@ import { StreamingFilter, crisisMessage, detectCrisis, SOFT_NOTE } from "@/lib/s
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// SSE 流式对话会超过 Vercel 的默认函数时限，必须显式放宽
+export const maxDuration = 60;
 
 type Body = {
   personaId: string;

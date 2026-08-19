@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // 语料索引在构建期生成，运行时由 API 路由用 fs 读取。
+  // 语料索引在构建期由 `npm run index` 生成，运行时由 /api/chat 用 fs 读取。
+  // serverless 打包默认不会带上它，必须显式声明，否则线上检索直接零召回。
+  // 两种 key 写法都留着：App Router 的 trace key 是 "/api/chat/route"，
+  // 通配写法在不同 Next 版本上覆盖范围不一致。
   outputFileTracingIncludes: {
+    "/api/chat/route": ["./data/index.json"],
     "/api/**": ["./data/index.json"],
   },
 };

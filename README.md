@@ -2,6 +2,11 @@
 
 > 给独自吃饭的人，一顿有人在场的饭。
 
+**[▸ 在线预览](https://psychologist-caf.vercel.app)** ｜ [一键部署](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwongolivia336-a11y%2FPsychologist-Caf-&env=ANTHROPIC_API_KEY&envDescription=Claude%20API%20key%EF%BC%8C%E7%94%A8%E4%BA%8E%E5%AF%B9%E8%AF%9D%E4%B8%8E%E8%8F%9C%E5%93%81%E8%AF%86%E5%88%AB&envLink=https%3A%2F%2Fconsole.anthropic.com%2Fsettings%2Fkeys&project-name=philosopher-cafe&repository-name=philosopher-cafe)
+
+> 预览里点亮的是胡塞尔那一桌。没有 `ANTHROPIC_API_KEY` 时页面照常渲染，
+> 但一开口对话会报错——这是预期行为，不是坏了。
+
 一个陪餐产品的原型。你拍下面前这顿饭，它变成一幅插画落在桌上；对面坐着一位哲学家，
 你们一起把这顿饭吃完。插画在这段时间里慢慢上色——画完了，饭就吃完了。
 
@@ -45,6 +50,37 @@ Error: EISDIR: illegal operation on a directory, readlink '...'
 
 - 本地要出生产包：把项目复制到 C: 盘再 `npm run build`（已实测通过，5 条路由全部产出）
 - 部署到 Vercel / Linux CI：不受影响
+
+---
+
+## 部署到 Vercel
+
+导入仓库后 **只需要做一件事**：在 Settings → Environment Variables 加
+
+| Key | Value | 环境 |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | 你的 Claude API key | Production / Preview / Development 全勾 |
+| `VOYAGE_API_KEY` | 可选。加了检索升级为 BM25 + 多语言向量 | 同上 |
+
+其余全部用默认值（Framework 自动识别 Next.js，Build Command 用 `package.json` 里的 `build`）。
+
+### 为什么语料要提交进仓库
+
+`npm run build` 会先跑 `npm run index` 建检索索引。如果公有领域原著靠
+`npm run fetch` 在构建时现下，**部署就绑定在 archive.org 的可用性上**——
+实测撞到过它返回 503，那样一次抖动就是一次部署失败。
+
+所以 `data/corpus/sources/` 刻意不 gitignore（2MB，公有领域，合法可分发），
+构建是确定性的。`npm run fetch` 保留给「新增语料源」用，不在部署链路上。
+
+### 索引怎么进的函数包
+
+`data/index.json`（约 6.6MB）是构建产物，运行时由 `/api/chat` 用 `fs` 读。
+serverless 打包默认不带它，必须在 `next.config.ts` 里声明
+`outputFileTracingIncludes`，否则线上检索会静默零召回——页面不报错，
+但哲学家再也引用不到任何原文。这是这个项目部署时最容易踩空的一处。
+
+两个 API 路由都设了 `maxDuration = 60`：SSE 流式对话和菜品视觉识别都会超过默认时限。
 
 ---
 

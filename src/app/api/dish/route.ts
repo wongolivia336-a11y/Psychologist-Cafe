@@ -3,6 +3,8 @@ import { anthropic, MODEL } from "@/lib/claude";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// 视觉识别一张菜品照片可能要十几秒，默认时限不够
+export const maxDuration = 60;
 
 /**
  * 照片 → 插画要素。

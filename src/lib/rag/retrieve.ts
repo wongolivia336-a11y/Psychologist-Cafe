@@ -9,15 +9,29 @@ let cached: CorpusIndex | null = null;
 
 export async function loadIndex(): Promise<CorpusIndex> {
   if (cached) return cached;
-  const file = path.join(process.cwd(), "data", "index.json");
-  try {
-    cached = JSON.parse(await readFile(file, "utf8")) as CorpusIndex;
-  } catch {
-    throw new Error(
-      "找不到检索索引 data/index.json。先运行：npm run fetch && npm run index",
-    );
+
+  // serverless 环境（Vercel）里 cwd 不一定是项目根，多试几个位置。
+  // 索引本体由 next.config.ts 的 outputFileTracingIncludes 打进函数包。
+  const candidates = [
+    path.join(process.cwd(), "data", "index.json"),
+    path.join(process.cwd(), ".next", "server", "data", "index.json"),
+    path.resolve("data", "index.json"),
+  ];
+
+  const errors: string[] = [];
+  for (const file of candidates) {
+    try {
+      cached = JSON.parse(await readFile(file, "utf8")) as CorpusIndex;
+      return cached;
+    } catch (err) {
+      errors.push(`${file}: ${(err as Error).message}`);
+    }
   }
-  return cached;
+
+  throw new Error(
+    "找不到检索索引 data/index.json。本地请先运行 npm run index。\n" +
+      errors.join("\n"),
+  );
 }
 
 /** 仅供测试/脚本使用：清掉进程内缓存 */
