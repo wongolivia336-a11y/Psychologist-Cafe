@@ -1,10 +1,24 @@
 import type { Chunk, ChunkMeta } from "./types";
 
+/**
+ * 统一换行符。
+ *
+ * 必须做，不是洁癖：Windows 上 git 检出会把语料换成 CRLF，而
+ *   - JS 正则里 `.` 不匹配 `\r`，`$`（无 m 标志）只匹配串尾，
+ *     导致 frontmatter 的 `key: value$` 每行都匹配失败，元数据全丢；
+ *   - 段落分隔 `\r\n\r\n` 过不了 `/\n{2,}/`，整份原著会被切成一块。
+ * 两者都不报错，只是静默产出一个废索引。
+ */
+function normalizeEol(raw: string): string {
+  return raw.replace(/\r\n?/g, "\n");
+}
+
 /** 解析文件顶部的 `---` frontmatter，返回键值对与剩余正文。 */
-export function parseFrontmatter(raw: string): {
+export function parseFrontmatter(input: string): {
   meta: Record<string, string>;
   body: string;
 } {
+  const raw = normalizeEol(input);
   if (!raw.startsWith("---")) return { meta: {}, body: raw };
   const end = raw.indexOf("\n---", 3);
   if (end < 0) return { meta: {}, body: raw };

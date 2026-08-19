@@ -1,0 +1,16 @@
+# 语料与源码一律以 LF 入库、以 LF 检出。
+#
+# 不这么做的后果是实测出来的：Windows 上 git 默认 core.autocrlf=true 会把
+# data/corpus/ 的原著换成 CRLF，而 frontmatter 解析和段落切分都会被 \r 打断，
+# 结果是索引静默退化成一整块、元数据全丢——构建不报错，线上检索直接失效。
+# 代码里 normalizeEol() 已经兜底，这里再从版本控制层锁一道。
+
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

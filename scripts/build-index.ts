@@ -45,6 +45,20 @@ async function collect(): Promise<Chunk[]> {
     if (!f.endsWith(".txt")) continue;
     const raw = await readFile(path.join(srcDir, f), "utf8");
     const got = chunkSource(raw, path.basename(f, ".txt"));
+
+    // 护栏：这类故障（CRLF 打断切分、frontmatter 解析失败）不会抛异常，
+    // 只会静默产出一个废索引。用「每块平均字数」把它变成硬失败。
+    const avg = got.length ? raw.length / got.length : Infinity;
+    if (avg > 6000) {
+      throw new Error(
+        `${f} 只切出 ${got.length} 块（平均 ${Math.round(avg)} 字/块），明显异常。\n` +
+          `多半是换行符或 frontmatter 没解析对，索引会是废的。检查 .gitattributes 与 chunk.ts。`,
+      );
+    }
+    if (got.length && got.every((c) => c.meta.license === "unknown")) {
+      throw new Error(`${f} 的 frontmatter 没解析出 license，元数据全丢，检查文件头格式。`);
+    }
+
     chunks.push(...got);
     console.log(`  原著 ${f}: ${got.length} 块`);
   }
