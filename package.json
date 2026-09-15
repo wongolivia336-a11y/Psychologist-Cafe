@@ -11,7 +11,9 @@
     "index": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/build-index.ts",
     "typecheck": "tsc --noEmit",
     "fetch": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/fetch-corpus.ts",
-    "test": "tsx scripts/smoke-safety.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "eval": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/eval-retrieve.ts",
     "test:retrieve": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/smoke-retrieve.ts"
   },
   "dependencies": {
@@ -29,6 +31,7 @@
     "cross-env": "^10.1.0",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.20.0",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.7"
   }
 }

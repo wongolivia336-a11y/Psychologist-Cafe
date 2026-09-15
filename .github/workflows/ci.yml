@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # 语料随仓库分发，建索引不需要任何 key；检索回归测试依赖它
+      - run: npm run index
+      - run: npm test
+      # 把评测表贴进 job summary，改了分词或扩展表一眼能看到影响
+      - name: Retrieval eval
+        run: |
+          echo '## 检索质量（husserl-gold）' >> "$GITHUB_STEP_SUMMARY"
+          npm run --silent eval >> "$GITHUB_STEP_SUMMARY"
