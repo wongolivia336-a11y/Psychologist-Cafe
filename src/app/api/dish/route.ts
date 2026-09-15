@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { anthropic, MODEL } from "@/lib/claude";
+import { checkLimit, clientIp, limitResponse } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,10 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    // 视觉调用是最贵的一步，限流紧一档
+    const limit = await checkLimit("dish", clientIp(req.headers));
+    if (!limit.ok) return limitResponse(limit);
 
     const res = await anthropic().messages.create({
       model: MODEL,

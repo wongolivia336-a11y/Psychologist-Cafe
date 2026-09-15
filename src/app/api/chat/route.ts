@@ -4,6 +4,7 @@ import { getPersona } from "@/lib/personas";
 import { retrieve } from "@/lib/rag/retrieve";
 import { buildSystem, type DishContext, type MemoryContext } from "@/lib/prompt";
 import { StreamingFilter, crisisMessage, detectCrisis, SOFT_NOTE } from "@/lib/safety";
+import { checkLimit, clientIp, limitResponse } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,6 +31,10 @@ export async function POST(req: NextRequest) {
   } catch {
     return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
   }
+
+  // 限流放在参数校验之后、任何会花钱的调用之前
+  const limit = await checkLimit("chat", clientIp(req.headers));
+  if (!limit.ok) return limitResponse(limit);
 
   const persona = getPersona(body.personaId);
   if (!persona) {
