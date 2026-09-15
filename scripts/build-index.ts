@@ -13,10 +13,54 @@ import path from "node:path";
 import { chunkCard, chunkSource } from "../src/lib/rag/chunk";
 import { tokenize, termFreq } from "../src/lib/rag/tokenize";
 import { embedDocuments, embeddingsEnabled, EMBED_MODEL } from "../src/lib/rag/embeddings";
+import {
+  formatLabel,
+  isScanBoilerplate,
+  locateSections,
+  type Structure,
+} from "../src/lib/rag/sections";
 import type { Chunk, CorpusIndex, IndexedChunk } from "../src/lib/rag/types";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const CORPUS = path.join(ROOT, "data", "corpus");
+
+/** data/sources.json 里每个源的 structure（可选）：有它才能打 § 定位 */
+async function loadStructures(): Promise<Map<string, Structure>> {
+  const out = new Map<string, Structure>();
+  try {
+    const raw = await readFile(path.join(ROOT, "data", "sources.json"), "utf8");
+    const json = JSON.parse(raw) as { sources: { id: string; structure?: Structure }[] };
+    for (const s of json.sources) if (s.structure) out.set(s.id, s.structure);
+  } catch {
+    /* 没有清单也能建索引，只是没有 § 定位 */
+  }
+  return out;
+}
+
+/**
+ * 扫描本前几页是 Google/archive 的使用说明，剔除；
+ * 其余按 § 编号打定位标签，正文之前的块保留首句快照。
+ */
+function labelSource(chunks: Chunk[], structure: Structure | undefined, file: string): Chunk[] {
+  const kept = chunks.filter((c) => !isScanBoilerplate(c.text));
+  const dropped = chunks.length - kept.length;
+  if (dropped) console.log(`    剔除扫描本说明页 ${dropped} 块`);
+  if (!structure) return kept;
+
+  const labels = locateSections(kept.map((c) => c.text), structure);
+  let labeled = 0;
+  labels.forEach((l, i) => {
+    if (l) {
+      kept[i].section = formatLabel(l);
+      labeled++;
+    }
+  });
+  console.log(`    § 定位：${labeled}/${kept.length} 块（${file}）`);
+  if (labeled < kept.length * 0.8) {
+    console.warn(`    ⚠ 定位覆盖率偏低，检查 sources.json 的 structure 或 OCR 编号格式`);
+  }
+  return kept;
+}
 
 async function readDirSafe(dir: string): Promise<string[]> {
   try {
@@ -28,6 +72,7 @@ async function readDirSafe(dir: string): Promise<string[]> {
 
 async function collect(): Promise<Chunk[]> {
   const chunks: Chunk[] = [];
+  const structures = await loadStructures();
 
   // 1. 概念卡片
   const cardDir = path.join(CORPUS, "cards");
@@ -44,23 +89,25 @@ async function collect(): Promise<Chunk[]> {
   for (const f of await readDirSafe(srcDir)) {
     if (!f.endsWith(".txt")) continue;
     const raw = await readFile(path.join(srcDir, f), "utf8");
-    const got = chunkSource(raw, path.basename(f, ".txt"));
+    const id = path.basename(f, ".txt");
+    const cut = chunkSource(raw, id);
 
     // 护栏：这类故障（CRLF 打断切分、frontmatter 解析失败）不会抛异常，
     // 只会静默产出一个废索引。用「每块平均字数」把它变成硬失败。
-    const avg = got.length ? raw.length / got.length : Infinity;
+    const avg = cut.length ? raw.length / cut.length : Infinity;
     if (avg > 6000) {
       throw new Error(
-        `${f} 只切出 ${got.length} 块（平均 ${Math.round(avg)} 字/块），明显异常。\n` +
+        `${f} 只切出 ${cut.length} 块（平均 ${Math.round(avg)} 字/块），明显异常。\n` +
           `多半是换行符或 frontmatter 没解析对，索引会是废的。检查 .gitattributes 与 chunk.ts。`,
       );
     }
-    if (got.length && got.every((c) => c.meta.license === "unknown")) {
+    if (cut.length && cut.every((c) => c.meta.license === "unknown")) {
       throw new Error(`${f} 的 frontmatter 没解析出 license，元数据全丢，检查文件头格式。`);
     }
 
+    console.log(`  原著 ${f}: ${cut.length} 块`);
+    const got = labelSource(cut, structures.get(id), f);
     chunks.push(...got);
-    console.log(`  原著 ${f}: ${got.length} 块`);
   }
 
   // 3. 自备授权文本

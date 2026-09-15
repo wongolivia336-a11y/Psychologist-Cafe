@@ -74,6 +74,8 @@ export type RetrieveOptions = {
   topK?: number;
   /** 每路召回的候选数，融合后再截断到 topK */
   candidates?: number;
+  /** 是否做跨语言查询扩展。默认开；评测脚本关掉它来量化扩展的贡献。 */
+  expand?: boolean;
 };
 
 export async function retrieve(
@@ -92,7 +94,7 @@ export async function retrieve(
   const langs = [
     ...new Set((filter ? index.chunks.filter(filter) : index.chunks).map((c) => c.meta.lang)),
   ];
-  const expanded = expandQuery(query, langs);
+  const expanded = opts.expand === false ? query : expandQuery(query, langs);
 
   // 第一路：BM25
   const lexical = bm25Search(index, expanded, { topK: candidates, filter });
