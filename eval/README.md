@@ -13,4 +13,16 @@
 npm run eval:contract
 ```
 
+真实浏览器截图回归需要先启动本地页面，再运行：
+
+```bash
+npm run dev -- --hostname 127.0.0.1 --port 3011
+npm run test:visual
+```
+
+脚本使用环境已提供的 Playwright + Chromium，不把浏览器依赖加入产品包；截图和
+`report.json` 写入 `.visual-regression`（可用 `VISUAL_OUTPUT_DIR` 覆盖）。如果
+运行环境没有预置 Playwright，可用 `PLAYWRIGHT_MODULE` 和 `BROWSER_PATH` 指向
+现有安装。错误状态由浏览器侧把 `/api/chat` 拦截为 503，因此不会修改应用生产路径。
+
 模型输出仍需人工评审。尤其是 `personas/` 中的角色话术，在上线前必须由进食障碍方向的临床工作者逐条审阅并签字；当前不把这项审查标记为已完成。

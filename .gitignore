@@ -1,5 +1,7 @@
 node_modules
 .next
+.next-visual*/
+.visual-regression/
 out
 .env
 .env.local

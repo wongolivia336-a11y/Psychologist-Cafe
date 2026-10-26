@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:turn": "tsx scripts/smoke-turn-plan.ts",
-    "test:retrieve": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/smoke-retrieve.ts"
+    "test:retrieve": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/smoke-retrieve.ts",
+    "test:visual": "node scripts/visual-regression.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.0",
