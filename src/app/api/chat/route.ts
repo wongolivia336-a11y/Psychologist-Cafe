@@ -2,20 +2,37 @@ import { NextRequest } from "next/server";
 import { anthropic, MODEL } from "@/lib/claude";
 import { getPersona } from "@/lib/personas";
 import { retrieve } from "@/lib/rag/retrieve";
-import { buildSystem, type DishContext, type MemoryContext } from "@/lib/prompt";
+import { buildSystem } from "@/lib/prompt";
 import { StreamingFilter, crisisMessage, detectCrisis, SOFT_NOTE } from "@/lib/safety";
+import { TURN_PLAN_TOOL, mockTurn, normalizeTurnPlan, renderTurnPlan, type TurnPlan } from "@/lib/ai/turn-plan";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 // SSE 流式对话会超过 Vercel 的默认函数时限，必须显式放宽
 export const maxDuration = 60;
 
-type Body = {
-  personaId: string;
-  messages: { role: "user" | "assistant"; content: string }[];
-  dish?: DishContext;
-  memory?: MemoryContext;
-};
+const ChatBodySchema = z.object({
+  personaId: z.string().min(1).max(80),
+  messages: z.array(
+    z.object({
+      role: z.enum(["user", "assistant"]),
+      content: z.string().max(12_000),
+    }),
+  ).min(1).max(40),
+  dish: z.object({
+    items: z.array(z.string().max(120)).max(12),
+    colors: z.array(z.string().max(40)).max(12),
+    temperature: z.string().max(20).optional(),
+    note: z.string().max(500).optional(),
+  }).nullable().optional(),
+  memory: z.object({
+    object: z.string().max(120),
+    label: z.string().max(500),
+  }).nullable().optional(),
+});
+
+type Body = z.infer<typeof ChatBodySchema>;
 
 function sse(event: string, data: unknown): Uint8Array {
   return new TextEncoder().encode(
@@ -24,12 +41,18 @@ function sse(event: string, data: unknown): Uint8Array {
 }
 
 export async function POST(req: NextRequest) {
-  let body: Body;
+  let raw: unknown;
   try {
-    body = (await req.json()) as Body;
+    raw = await req.json();
   } catch {
     return Response.json({ error: "请求体不是合法 JSON" }, { status: 400 });
   }
+
+  const parsed = ChatBodySchema.safeParse(raw);
+  if (!parsed.success) {
+    return Response.json({ error: "请求内容不符合这张桌子的格式" }, { status: 400 });
+  }
+  const body: Body = parsed.data;
 
   const persona = getPersona(body.personaId);
   if (!persona) {
@@ -87,14 +110,12 @@ export async function POST(req: NextRequest) {
           sse(
             "sources",
             sources.map((s) => ({
+              id: s.id,
               section: s.section,
               author: s.meta.author,
               title: s.meta.title,
-              year: s.meta.year,
               license: s.meta.license,
               sourcePage: s.meta.sourcePage,
-              score: Number(s.score.toFixed(4)),
-              via: s.via,
             })),
           ),
         );
@@ -108,31 +129,42 @@ export async function POST(req: NextRequest) {
           crisis.level === "soft" ? SOFT_NOTE : undefined,
         );
 
-        // 3. 调模型
-        const msg = anthropic().messages.stream({
-          model: MODEL,
-          max_tokens: 700,
-          temperature: 1,
-          system: blocks.map((b) => ({
-            type: "text" as const,
-            text: b.text,
-            ...(b.cache ? { cache_control: { type: "ephemeral" as const } } : {}),
-          })),
-          messages: body.messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        });
-
-        for await (const event of msg) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            const safe = filter.push(event.delta.text);
-            if (safe) controller.enqueue(sse("text", { text: safe }));
-          }
+        // 3. 先生成结构化 TurnPlan，再把它渲染成场景事件与谈话片段。
+        // 没有 key 时使用本地 mock，预览仍然可以走完完整交互路径。
+        let plan: TurnPlan;
+        if (!process.env.ANTHROPIC_API_KEY) {
+          plan = mockTurn(lastUser?.content ?? "");
+        } else {
+          const msg = await anthropic().messages.create({
+            model: MODEL,
+            max_tokens: 500,
+            temperature: 1,
+            system: blocks.map((b) => ({
+              type: "text" as const,
+              text: `${b.text}\n\n## 输出协议\n不要直接输出文字。请调用 compose_turn 工具。sourceRefs 只能使用检索段落的序号字符串。一次只生成一个观察或一个问题，不要给建议，不要总结。`,
+              ...(b.cache ? { cache_control: { type: "ephemeral" as const } } : {}),
+            })),
+            tools: [TURN_PLAN_TOOL],
+            tool_choice: { type: "tool", name: "compose_turn" },
+            messages: body.messages.map((m) => ({
+              role: m.role,
+              content: m.content,
+            })),
+          });
+          const toolBlock = msg.content.find((block) => block.type === "tool_use");
+          plan = normalizeTurnPlan(toolBlock?.type === "tool_use" ? toolBlock.input : null, sources.length);
         }
+
+        controller.enqueue(sse("turn_plan", plan));
+        controller.enqueue(sse("scene", {
+          kind: plan.kind,
+          pause: plan.pause,
+          spatialCue: plan.spatialCue,
+        }));
+
+        const text = renderTurnPlan(plan);
+        const safe = filter.push(text);
+        if (safe) controller.enqueue(sse("text", { text: safe }));
 
         const tail = filter.flush();
         if (tail) controller.enqueue(sse("text", { text: tail }));

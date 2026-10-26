@@ -1,9 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import AdultGate from "@/components/AdultGate";
 
 export const metadata: Metadata = {
   title: "在场 · Philosopher's Café",
   description: "给独自吃饭的人，一顿有人在场的饭。",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#110f0d",
 };
 
 export default function RootLayout({
@@ -13,7 +18,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body className="grain vignette min-h-screen antialiased">{children}</body>
+      <body className="grain vignette min-h-screen antialiased">
+        <AdultGate>{children}</AdultGate>
+      </body>
     </html>
   );
 }

@@ -4,9 +4,9 @@
  *   2. 禁语过滤（模型输出）—— 逐句拦截，不让违规句子流到前端
  *   3. system prompt 里的行为约束（见 personas.ts SHARED_FRAME）
  *
- * ⚠️ 上线前必须做的两件事：
- *   - 核实下方热线号码当前有效（号码会变更，不要照抄）
+ * ⚠️ 上线前必须做的人工审查：
  *   - 找一位真正的进食障碍方向临床工作者审一遍 personas.ts 的话术
+ *   - 按部署地区再次确认危机渠道与服务时段
  */
 
 // ── 1. 危机识别 ──────────────────────────────────────────────
@@ -57,15 +57,13 @@ export function detectCrisis(text: string): {
   return { level: matched.length ? "soft" : "none", matched };
 }
 
-/** TODO(上线前核实)：号码可能变更，务必确认现行有效再发布。 */
 export const CRISIS_RESOURCES = [
-  { name: "全国心理援助热线", phone: "12356", note: "24 小时" },
+  { name: "全国统一心理援助热线", phone: "12356", note: "各地接线时段以实际接通提示为准" },
   {
-    name: "北京心理危机研究与干预中心",
-    phone: "010-82951332",
-    note: "24 小时",
+    name: "当地紧急服务",
+    phone: "请使用所在地的紧急服务号码",
+    note: "如果你正处于立即危险中",
   },
-  { name: "希望24热线", phone: "400-161-9995", note: "24 小时" },
 ];
 
 export function crisisMessage(): string {

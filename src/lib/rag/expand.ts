@@ -67,6 +67,14 @@ const ZH_TO_DE: LangMap = {
   心理: ["psychologisch", "Psychologie", "psychisch"],
   思维: ["Denken", "Denkgesetze", "Gedanke"],
   规律: ["Gesetz", "Gesetze", "Naturgesetz"],
+
+  // 进食相关表达：不把临床标签当成胡塞尔的理论术语，
+  // 只把它们引向语料里确实出现的「欲望、意志、身体与受阻」词群。
+  厌食: ["Essen", "Unlust", "Abneigung", "Lust"],
+  拒绝进食: ["Essen", "Widerstand", "gehemmt", "vermeiden", "Wille"],
+  不想吃: ["Essen", "Unlust", "Abneigung", "Widerstand"],
+  食欲: ["Lust", "Unlust", "Begehren", "Wille"],
+  进食: ["Essen", "Lust", "Begehren"],
 };
 
 /** 概念卡片是中文的，德文提问时也扩一下，保证双向都能召回 */

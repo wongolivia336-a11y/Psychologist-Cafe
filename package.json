@@ -10,8 +10,10 @@
     "lint": "next lint",
     "index": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/build-index.ts",
     "typecheck": "tsc --noEmit",
+    "eval": "tsx scripts/run-evals.ts",
     "fetch": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/fetch-corpus.ts",
     "test": "tsx scripts/smoke-safety.ts",
+    "test:turn": "tsx scripts/smoke-turn-plan.ts",
     "test:retrieve": "cross-env NODE_USE_ENV_PROXY=1 tsx scripts/smoke-retrieve.ts"
   },
   "dependencies": {

@@ -4,11 +4,11 @@
 
 **[▸ 在线预览](https://psychologist-caf.vercel.app)** ｜ [一键部署](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fwongolivia336-a11y%2FPsychologist-Cafe&env=ANTHROPIC_API_KEY&envDescription=Claude%20API%20key%EF%BC%8C%E7%94%A8%E4%BA%8E%E5%AF%B9%E8%AF%9D%E4%B8%8E%E8%8F%9C%E5%93%81%E8%AF%86%E5%88%AB&envLink=https%3A%2F%2Fconsole.anthropic.com%2Fsettings%2Fkeys&project-name=philosopher-cafe&repository-name=philosopher-cafe)
 
-> 预览里点亮的是胡塞尔那一桌。没有 `ANTHROPIC_API_KEY` 时页面照常渲染，
-> 但一开口对话会报错——这是预期行为，不是坏了。
+> 预览里点亮的是胡塞尔那一桌。没有 `ANTHROPIC_API_KEY` 时会进入本地 Mock 模式：
+> 对话和静物上传仍能走完整的场景流程，但不会调用外部模型。
 
-一个陪餐产品的原型。你拍下面前这顿饭，它变成一幅插画落在桌上；对面坐着一位哲学家，
-你们一起把这顿饭吃完。插画在这段时间里慢慢上色——画完了，饭就吃完了。
+一个关于陪伴、观察和物件的数字静物剧场。你可以把眼前的景物放到桌上；对面坐着一位哲学家，
+你们在一张临时的桌子旁说话，也可以保持沉默。画面的显影是一次可中断的场景变化，不代表吃完、表现或任务进度。
 
 不是心理咨询，不是饮食记录，不是冥想 app。
 
@@ -102,9 +102,9 @@ serverless 打包默认不带它，必须在 `next.config.ts` 里声明
 
 ### ⚠️ 上线前必须做
 
-- [ ] 核实 `CRISIS_RESOURCES` 里的热线号码当前有效（号码会变更，不要照抄）
+- [x] 已按国家卫生健康委公开通知核实并收敛到全国统一心理援助热线 `12356`；部署地区仍需复核接线覆盖和时段
 - [ ] 找一位真正的进食障碍方向临床工作者，审一遍 `personas.ts` 全部话术
-- [ ] 补一个成年确认与知情说明页
+- [x] 已补成年确认与知情说明页（`/notice`），并说明应用代码与部署日志的保留边界
 
 ---
 
@@ -195,7 +195,7 @@ src/
     api/dish/            照片 → 插画要素（不识别菜名、不估份量）
   components/
     MealScene.tsx        拼桌场景
-    Dish.tsx             盘子插画（同时是这顿饭的计时器）
+    Dish.tsx             固定机位的程序化静物画布（不绑定进食时间）
 ```
 
 ---
@@ -209,8 +209,8 @@ src/
 
 ### 还没做
 
-- 3D 建模场景（当前是 CSS/SVG 占位。方案：Blender 固定机位预渲染成分层 PNG，
-  只有盘子是唯一的 3D hero object）
+- Blender / GLB 资产管线（当前先用无依赖的程序化静物画布验证构图；后续再以 Blender
+  固定机位预渲染或轻量 GLB 替换，只有盘子是唯一的 3D hero object）
 - 语音（当前是文字。声音的可视化应该是烛火呼吸，不做抽象光球）
 - 其余三位角色的 system prompt（`personas.ts` 里已留位，`system` 字段为空）
 - 胡塞尔之外的语料接入（`data/sources.json` 里已备好条目，改 `active` 即可）
