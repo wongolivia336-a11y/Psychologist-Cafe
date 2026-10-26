@@ -98,7 +98,8 @@ input:focus-visible {
   pointer-events: none;
   opacity: 0.11;
   mix-blend-mode: soft-light;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.7'/%3E%3C/svg%3E");
+  background-image: url("/assets/mineral-paper-grain-v1.webp");
+  background-size: 32rem 32rem;
 }
 
 .vignette::before {
@@ -583,6 +584,8 @@ input:focus-visible {
   width: 100%;
   height: 100%;
 }
+
+.dish-canvas--three { touch-action: pan-y; }
 
 .dish-empty-label {
   position: absolute;

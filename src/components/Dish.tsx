@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ThreeStillLife from "./ThreeStillLife";
 
 export type DishData = {
   items?: string[];
@@ -246,7 +247,7 @@ function drawStillLife(
  * It is a real canvas scene with geometry, material gradients, contact shadows and a fixed camera,
  * rather than a collection of decorative SVG ellipses.
  */
-export default function Dish({ dish }: { dish: DishData }) {
+function CanvasDish({ dish }: { dish: DishData }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [reveal, setReveal] = useState(dish?.items?.length ? 0 : 0);
 
@@ -293,6 +294,20 @@ export default function Dish({ dish }: { dish: DishData }) {
   return (
     <div className="dish-canvas-wrap">
       <canvas ref={canvasRef} className="dish-canvas" role="img" aria-label={dish?.items?.length ? `桌上的静物：${dish.items.join("、")}` : "桌上还没有放下一件静物"} />
+      {!dish?.items?.length && <span className="dish-empty-label">等一件景物</span>}
+    </div>
+  );
+}
+
+export default function Dish({ dish }: { dish: DishData }) {
+  const [fallback, setFallback] = useState(false);
+  const onFallback = useCallback(() => setFallback(true), []);
+
+  if (fallback) return <CanvasDish dish={dish} />;
+
+  return (
+    <div className="dish-canvas-wrap" data-renderer="three">
+      <ThreeStillLife dish={dish} onFallback={onFallback} />
       {!dish?.items?.length && <span className="dish-empty-label">等一件景物</span>}
     </div>
   );
