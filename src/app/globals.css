@@ -14,6 +14,8 @@
   --paper: #20272b;
   --paper-soft: #53666c;
   --paper-faint: #77878b;
+  --scene-light: #f1f2ee;
+  --scene-shadow: #20272b;
   --line: rgba(32, 39, 43, 0.15);
   --line-strong: rgba(32, 39, 43, 0.3);
   --shadow: rgba(32, 39, 43, 0.18);
@@ -40,6 +42,8 @@
   --paper: #171d21;
   --paper-soft: #4f6066;
   --paper-faint: #75868a;
+  --scene-light: #e7e8e4;
+  --scene-shadow: #171d21;
   --line: rgba(23, 29, 33, 0.16);
   --line-strong: rgba(23, 29, 33, 0.3);
   --shadow: rgba(23, 29, 33, 0.2);
@@ -65,6 +69,8 @@
   --paper: #dde2de;
   --paper-soft: #aab7b8;
   --paper-faint: #718287;
+  --scene-light: #dde2de;
+  --scene-shadow: #0e1419;
   --line: rgba(221, 226, 222, 0.16);
   --line-strong: rgba(221, 226, 222, 0.32);
   --shadow: rgba(0, 0, 0, 0.36);
@@ -226,6 +232,7 @@ input:focus-visible {
 
 .art-direction-control {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.55rem;
   color: var(--paper-faint);
@@ -233,6 +240,13 @@ input:focus-visible {
   font-size: 0.55rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.art-direction-control__group,
+.art-direction-control__brightness {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .art-direction-control__options {
@@ -253,8 +267,23 @@ input:focus-visible {
 
 .art-direction-control button:hover,
 .art-direction-control button.is-active {
-  border-color: var(--candle);
+  border-color: var(--button-border-hover);
   color: var(--candle-light);
+}
+
+.art-direction-control__brightness input {
+  width: 5.5rem;
+  height: 1rem;
+  accent-color: var(--candle);
+  cursor: pointer;
+}
+
+.art-direction-control__value {
+  min-width: 2.1rem;
+  color: var(--paper-faint);
+  font-size: 0.52rem;
+  letter-spacing: 0.06em;
+  text-align: right;
 }
 
 .lobby-shell,
@@ -262,6 +291,7 @@ input:focus-visible {
   min-height: 100svh;
   overflow: hidden;
   background: var(--ink);
+  filter: brightness(var(--scene-brightness, 1));
 }
 
 .lobby-shell { position: relative; isolation: isolate; }
@@ -601,6 +631,7 @@ input:focus-visible {
 
 .dish-canvas {
   display: block;
+  background: transparent;
   width: 100%;
   height: 100%;
 }
@@ -775,7 +806,7 @@ input:focus-visible {
   height: 0.42rem;
   border-radius: 50%;
   background: var(--candle-light);
-  box-shadow: 0 0 0.8rem rgba(240, 203, 134, 0.7);
+  box-shadow: 0 0 0.8rem color-mix(in srgb, var(--candle-light) 70%, transparent);
   animation: candle-breathe 2.8s ease-in-out infinite;
 }
 
@@ -856,6 +887,9 @@ input:focus-visible {
 
 @media (max-width: 680px) {
   .meal-header > .quiet-link { flex: 0 0 auto; white-space: nowrap; }
+  .meal-header > .art-direction-control { flex-basis: 100%; justify-content: flex-end; margin-left: 0; }
+  .lobby-header__top { flex-wrap: wrap; }
+  .lobby-header__top > .art-direction-control { flex-basis: 100%; justify-content: flex-end; }
   .room-window { left: -2rem; top: 10%; width: 11rem; height: 8rem; }
   .lobby-stage { height: auto; min-height: 0; padding: 2.5rem 1.4rem 2rem; }
   .lobby-tables { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2rem 0.4rem; }
