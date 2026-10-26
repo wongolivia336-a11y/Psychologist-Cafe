@@ -83,7 +83,12 @@ function drawStillLife(
   };
 
   const colors = dish?.palette?.filter((color) => /^#[0-9a-f]{3,8}$/i.test(color)) ?? [];
-  const fallback = ["#778b91", "#8da29b", "#9b8b79", "#607988"];
+  const fallback = [
+    palette.accent,
+    cssVar("--walnut-light", "#9aa7a8"),
+    cssVar("--moss-soft", "#c3cfcc"),
+    palette.muted,
+  ];
   const foodColors = colors.length ? colors : fallback;
   const items = dish?.items ?? [];
 

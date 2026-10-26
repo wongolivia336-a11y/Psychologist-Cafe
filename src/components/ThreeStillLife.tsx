@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DishData } from "./Dish";
 import type { Material, Mesh, Vector3 } from "three";
 
@@ -20,6 +20,18 @@ function colorFrom(value: string | undefined, fallback: string) {
  */
 export default function ThreeStillLife({ dish, onFallback }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [themeVersion, setThemeVersion] = useState(0);
+
+  useEffect(() => {
+    const themeObserver = new MutationObserver(() => {
+      setThemeVersion((version) => version + 1);
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-direction"],
+    });
+    return () => themeObserver.disconnect();
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,9 +50,22 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
         const renderer = new THREE.WebGLRenderer({
           canvas,
           alpha: true,
+          premultipliedAlpha: false,
           antialias: window.innerWidth > 480,
           powerPreference: "high-performance",
         });
+        renderer.setClearColor(0x000000, 0);
+        renderer.setClearAlpha(0);
+        canvas.style.backgroundColor = "transparent";
+
+        // Some browsers expose a WebGL context but ignore alpha compositing.
+        // Do not leave a black rectangle over the light stage in that case.
+        if (renderer.getContext().getContextAttributes()?.alpha === false) {
+          renderer.dispose();
+          if (!disposed) onFallback();
+          return;
+        }
+
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -58,12 +83,20 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
         const styles = getComputedStyle(document.documentElement);
         const ink = styles.getPropertyValue("--ink").trim() || "#11171a";
         const paper = styles.getPropertyValue("--paper").trim() || "#d7dfdc";
+        const sceneLight = styles.getPropertyValue("--scene-light").trim() || paper;
+        const sceneShadow = styles.getPropertyValue("--scene-shadow").trim() || ink;
         const accent = styles.getPropertyValue("--candle").trim() || "#476f87";
         const surface = styles.getPropertyValue("--ink-raised").trim() || "#263238";
         const foodColors = (dish?.palette ?? [])
           .filter((value) => /^#[0-9a-f]{3,8}$/i.test(value))
           .slice(0, 5);
-        const fallbackFood = ["#87989c", "#a8b6ae", "#9c8774", "#607988", "#c1b49e"];
+        const fallbackFood = [
+          accent,
+          styles.getPropertyValue("--walnut-light").trim() || "#87989c",
+          styles.getPropertyValue("--moss-soft").trim() || "#a8b6ae",
+          styles.getPropertyValue("--candle-light").trim() || "#607988",
+          paper,
+        ];
 
         const table = new THREE.Mesh(
           new THREE.PlaneGeometry(12, 8),
@@ -180,8 +213,8 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
         watch.rotation.y = 0.2;
         root.add(watch);
 
-        scene.add(new THREE.HemisphereLight(paper, ink, 1.45));
-        const keyLight = new THREE.DirectionalLight(paper, 2.1);
+        scene.add(new THREE.HemisphereLight(sceneLight, sceneShadow, 1.45));
+        const keyLight = new THREE.DirectionalLight(sceneLight, 2.1);
         keyLight.position.set(-3, 7, 4);
         scene.add(keyLight);
         const fillLight = new THREE.PointLight(accent, 2.2, 8);
@@ -253,10 +286,11 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
       observer?.disconnect();
       cleanScene?.();
     };
-  }, [dish, onFallback]);
+  }, [dish, onFallback, themeVersion]);
 
   return (
     <canvas
+      key={themeVersion}
       ref={canvasRef}
       className="dish-canvas dish-canvas--three"
       role="img"
