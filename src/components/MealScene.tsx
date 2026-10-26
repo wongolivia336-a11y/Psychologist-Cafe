@@ -88,7 +88,7 @@ export default function MealScene({ persona }: { persona: Persona }) {
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, [messages, error]);
 
   const send = useCallback(
     async (text: string) => {
@@ -306,8 +306,9 @@ export default function MealScene({ persona }: { persona: Persona }) {
                   </div>
                 );
               })}
-              {error && <div className="error-note" role="alert">{error}</div>}
             </div>
+
+            {error && <div className="error-note" role="alert">{error}</div>}
 
             {sources.length > 0 && (
               <div className="source-drawer">

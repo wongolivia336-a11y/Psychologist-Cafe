@@ -1,5 +1,6 @@
 {
   "baseUrl": "http://127.0.0.1:3011",
+  "runner": "npm run test:visual",
   "viewports": [
     { "name": "desktop-wide", "width": 1440, "height": 900 },
     { "name": "desktop-compact", "width": 1024, "height": 768 },
