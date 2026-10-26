@@ -18,6 +18,12 @@
   --line-strong: rgba(32, 39, 43, 0.3);
   --shadow: rgba(32, 39, 43, 0.18);
   --danger: #9c4f4d;
+  --button-bg: color-mix(in srgb, var(--ink-raised) 78%, transparent);
+  --button-bg-hover: color-mix(in srgb, var(--candle) 12%, var(--ink-raised));
+  --button-border: color-mix(in srgb, var(--paper) 24%, transparent);
+  --button-border-hover: var(--candle);
+  --focus-ring: var(--candle-light);
+  --selection-bg: color-mix(in srgb, var(--candle) 24%, transparent);
 }
 
 :root[data-direction="mineral"] {
@@ -37,6 +43,12 @@
   --line-strong: rgba(23, 29, 33, 0.3);
   --shadow: rgba(23, 29, 33, 0.2);
   --danger: #964e4e;
+  --button-bg: color-mix(in srgb, var(--ink-raised) 78%, transparent);
+  --button-bg-hover: color-mix(in srgb, var(--candle) 12%, var(--ink-raised));
+  --button-border: color-mix(in srgb, var(--paper) 24%, transparent);
+  --button-border-hover: var(--candle);
+  --focus-ring: var(--candle-light);
+  --selection-bg: color-mix(in srgb, var(--candle) 24%, transparent);
 }
 
 :root[data-direction="nocturnal"] {
@@ -56,6 +68,12 @@
   --line-strong: rgba(221, 226, 222, 0.32);
   --shadow: rgba(0, 0, 0, 0.36);
   --danger: #c2766f;
+  --button-bg: color-mix(in srgb, var(--ink-raised) 78%, transparent);
+  --button-bg-hover: color-mix(in srgb, var(--candle) 14%, var(--ink-raised));
+  --button-border: color-mix(in srgb, var(--paper) 26%, transparent);
+  --button-border-hover: var(--candle);
+  --focus-ring: var(--candle-light);
+  --selection-bg: color-mix(in srgb, var(--candle) 28%, transparent);
 }
 
 * { box-sizing: border-box; }
@@ -81,12 +99,12 @@ button:focus-visible,
 a:focus-visible,
 textarea:focus-visible,
 input:focus-visible {
-  outline: 1px solid var(--candle-light);
+  outline: 1px solid var(--focus-ring);
   outline-offset: 4px;
 }
 
 ::selection {
-  background: rgba(210, 162, 87, 0.28);
+  background: var(--selection-bg);
   color: var(--paper);
 }
 
@@ -609,22 +627,23 @@ input:focus-visible {
 }
 
 .ritual-button {
-  border: 1px solid var(--line);
+  border: 1px solid var(--button-border);
   border-radius: 999px;
-  background: rgba(18, 15, 12, 0.58);
-  color: var(--paper-soft);
+  background: var(--button-bg);
+  color: var(--paper);
   cursor: pointer;
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 0.65rem;
   letter-spacing: 0.13em;
   padding: 0.62rem 0.95rem;
-  transition: border-color 250ms ease, color 250ms ease, background 250ms ease;
+  transition: border-color 250ms ease, color 250ms ease, background 250ms ease, box-shadow 250ms ease;
 }
 
 .ritual-button:hover:not(:disabled) {
-  border-color: rgba(210, 162, 87, 0.68);
-  background: rgba(210, 162, 87, 0.08);
-  color: var(--candle-light);
+  border-color: var(--button-border-hover);
+  background: var(--button-bg-hover);
+  color: var(--paper);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--button-border-hover) 28%, transparent);
 }
 
 .ritual-button:disabled { cursor: wait; opacity: 0.45; }
@@ -650,17 +669,17 @@ input:focus-visible {
 
 .object-token {
   min-height: 4.5rem;
-  border: 1px solid var(--line);
-  background: rgba(18, 15, 12, 0.3);
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
   color: var(--paper-soft);
   cursor: pointer;
   transition: border-color 250ms ease, color 250ms ease, background 250ms ease;
 }
 
 .object-token:hover {
-  border-color: rgba(210, 162, 87, 0.68);
-  background: rgba(210, 162, 87, 0.06);
-  color: var(--candle-light);
+  border-color: var(--button-border-hover);
+  background: var(--button-bg-hover);
+  color: var(--paper);
 }
 
 .object-token__name { display: block; margin-top: 0.28rem; font-size: 0.57rem; }
@@ -794,10 +813,10 @@ input:focus-visible {
 
 .conversation-submit {
   flex: 0 0 auto;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--button-border);
   border-radius: 999px;
-  background: transparent;
-  color: var(--paper-soft);
+  background: var(--button-bg);
+  color: var(--paper);
   cursor: pointer;
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 0.65rem;
@@ -806,7 +825,11 @@ input:focus-visible {
   transition: border-color 250ms ease, color 250ms ease;
 }
 
-.conversation-submit:hover:not(:disabled) { border-color: var(--candle); color: var(--candle-light); }
+.conversation-submit:hover:not(:disabled) {
+  border-color: var(--button-border-hover);
+  background: var(--button-bg-hover);
+  color: var(--paper);
+}
 .conversation-submit:disabled { cursor: default; opacity: 0.3; }
 
 .conversation-footnote { margin-top: 0.8rem; color: #665d53; font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.6rem; line-height: 1.7; }
