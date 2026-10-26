@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { anthropic, MODEL } from "@/lib/claude";
 import { z } from "zod";
+import { checkLimit, clientIp, limitResponse } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,6 +58,7 @@ export async function POST(req: NextRequest) {
     }
     const { imageBase64, mediaType } = parsedRequest.data;
 
+    // Mock 路径不调用外部模型，不消耗付费额度。
     if (!process.env.ANTHROPIC_API_KEY) {
       return Response.json({
         items: ["一组未命名的轮廓", "一处浅色反光"],
@@ -67,6 +69,10 @@ export async function POST(req: NextRequest) {
         note: "预览模式暂未调用视觉模型，先留下一张中性的静物草图。",
       });
     }
+
+    // 视觉调用是最贵的一步，限流紧一档
+    const limit = await checkLimit("dish", clientIp(req.headers));
+    if (!limit.ok) return limitResponse(limit);
 
     const res = await anthropic().messages.create({
       model: MODEL,

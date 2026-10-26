@@ -75,6 +75,86 @@ const ZH_TO_DE: LangMap = {
   不想吃: ["Essen", "Unlust", "Abneigung", "Widerstand"],
   食欲: ["Lust", "Unlust", "Begehren", "Wille"],
   进食: ["Essen", "Lust", "Begehren"],
+
+  // ── 以下为 v2 扩充：《逻辑研究》各研究的核心术语 ──
+  // 上面的表是为餐桌场景写的（感知、时间、判断），对原著的主干概念几乎没有覆盖。
+  // eval/husserl-gold.json 的评测把这点量化出来了：32 条概念提问 hit@5 只有 25%。
+  // 下面每个德文词都核对过在索引里的文档频率（df ≥ 2），没有一个是凭空加的。
+
+  // I. 表达与含义
+  记号: ["Zeichen", "Anzeige", "Anzeichen"],
+  符号: ["Zeichen", "Anzeige"],
+  表达: ["Ausdruck", "Ausdrücke", "ausdrücken", "Bedeutung"],
+  所指: ["Gegenstand", "Gegenständlichkeit", "Bedeutung"],
+  独自: ["einsamen", "Seelenleben", "Mittheilung"],
+  自言自语: ["einsamen", "Seelenleben"],
+  说话的人: ["occasionellen", "schwankend", "Mittheilung"],
+  观念: ["ideal", "ideale", "Idealität", "Idee"],
+  心理活动: ["psychische", "Act", "Acte", "Erlebnis"],
+
+  // II. 种与一般对象
+  普遍: ["Allgemeine", "allgemein", "Allgemeinheit", "Species"],
+  红: ["roth", "Röthe", "Farbe"],
+  休谟: ["Hume"],
+  洛克: ["Locke"],
+  贝克莱: ["Berkeley"],
+  密尔: ["Mill"],
+  布伦塔诺: ["Brentano"],
+  康德: ["Kant"],
+  抽象观念: ["abstracte", "Ideen", "Abstraction"],
+
+  // III. 整体与部分
+  部分: ["Theil", "Theile", "Theilen", "Stück", "Moment"],
+  整体: ["Ganze", "Ganzen", "Ganzes"],
+  独立: ["selbständig", "selbständige", "Selbständigkeit"],
+  单独: ["selbständig", "abtrennbar", "Selbständigkeit"],
+  依赖: ["unselbständig", "unselbständige", "abhängig", "Fundirung"],
+  奠基: ["Fundirung", "fundirt", "fundiren"],
+
+  // IV. 含义的复合
+  自己有意义: ["synkategorematische", "Synkategorematica", "kategorematisch"],
+  助范畴: ["synkategorematische", "Synkategorematica"],
+  无意义: ["Unsinn", "sinnlos", "Widersinn"],
+  悖谬: ["Widersinn", "widersinnig"],
+  荒谬: ["Widersinn", "widersinnig"],
+
+  // V. 意向体验
+  心理现象: ["psychische", "Phänomene", "Brentano", "intentionale"],
+  行为: ["Act", "Acte", "Actcharakter"],
+  质性: ["Qualität"],
+  质料: ["Materie"],
+  想象: ["Phantasie", "Einbildung", "Vorstellung"],
+  表象: ["Vorstellung", "Vorstellungen", "Vorstellungsinhalt"],
+
+  // VI. 充实与直观
+  充实: ["Erfüllung", "erfüllt", "erfüllen", "Bedeutungsintention"],
+  失望: ["Enttäuschung", "enttäuscht", "Widerstreit"],
+  落空: ["Enttäuschung", "Widerstreit"],
+  冲突: ["Widerstreit", "Streit"],
+  期待: ["Erwartung", "erwarten", "Intention"],
+  感性: ["sinnlich", "Sinnlichkeit"],
+  范畴: ["kategorial", "kategoriale", "kategorialen", "Kategorien"],
+  代现: ["Repräsentation", "Repräsentant", "Repräsentanten"],
+  愿望: ["Wunsch", "Wünsche", "wünschen"],
+  疑问: ["Frage", "Fragen"],
+  客体化: ["objectivirende", "nichtobjectivirende"],
+
+  // 卷一：纯粹逻辑学导引
+  规范: ["normativ", "normative", "Norm", "Normen"],
+  理论科学: ["theoretische", "Disciplin", "Wissenschaft"],
+  技艺: ["Kunstlehre", "practische"],
+  心理主义: ["Psychologismus", "psychologistische", "Psychologisten"],
+  逻辑: ["Logik", "logischen", "logische"],
+  论证: ["Beweis", "Beweisführung", "Argumente"],
+  自然规律: ["Naturgesetze", "Naturgesetzen", "Naturgesetz"],
+  矛盾律: ["Widerspruch", "Widerspruchs", "Satz", "Princip"],
+  矛盾: ["Widerspruch", "Widerstreit"],
+  相对主义: ["Relativismus", "relativistisch", "Skepticismus", "Anthropologismus"],
+  怀疑: ["Skepticismus", "Skepsis"],
+  思维经济: ["Denkökonomie", "denkökonomisch", "Mach", "Avenarius"],
+  统一: ["Einheit", "einheitlich"],
+  科学: ["Wissenschaft", "Wissenschaften", "Wissenschaftslehre"],
+  纯粹逻辑: ["reine", "reinen", "Logik"],
 };
 
 /** 概念卡片是中文的，德文提问时也扩一下，保证双向都能召回 */

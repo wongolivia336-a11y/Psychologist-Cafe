@@ -6,6 +6,7 @@ import { buildSystem } from "@/lib/prompt";
 import { StreamingFilter, crisisMessage, detectCrisis, SOFT_NOTE } from "@/lib/safety";
 import { TURN_PLAN_TOOL, mockTurn, normalizeTurnPlan, renderTurnPlan, type TurnPlan } from "@/lib/ai/turn-plan";
 import { z } from "zod";
+import { checkLimit, clientIp, limitResponse } from "@/lib/ratelimit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,10 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "请求内容不符合这张桌子的格式" }, { status: 400 });
   }
   const body: Body = parsed.data;
+
+  // 限流放在参数校验之后、任何会花钱的调用之前
+  const limit = await checkLimit("chat", clientIp(req.headers));
+  if (!limit.ok) return limitResponse(limit);
 
   const persona = getPersona(body.personaId);
   if (!persona) {

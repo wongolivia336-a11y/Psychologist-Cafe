@@ -32,9 +32,13 @@ npm run dev
 自检：
 
 ```bash
-npm run test            # 安全层（危机识别 + 禁语过滤）18 项
-npm run test:retrieve   # 检索召回
+npm test                # vitest：安全层 42 项、限流、检索组件、§ 定位、检索质量回归线
+npm run eval            # 检索质量评测（下面「检索质量」那张表就是它打出来的）
+npm run eval:contract   # personas / grounding / safety / experience 确定性护栏
+npm run test:retrieve   # 手动看几条检索结果
 ```
+
+CI（`.github/workflows/ci.yml`）在每次 push 上跑 typecheck → 建索引 → 全部测试 → 评测表贴进 job summary。
 
 ### ⚠️ 已知问题：不能在 G: 盘跑生产构建
 
@@ -60,9 +64,24 @@ Error: EISDIR: illegal operation on a directory, readlink '...'
 | Key | Value | 环境 |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | 你的 Claude API key | Production / Preview / Development 全勾 |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | **强烈建议**。限流计数的共享存储，免费档够用 | 同上 |
 | `VOYAGE_API_KEY` | 可选。加了检索升级为 BM25 + 多语言向量 | 同上 |
 
 其余全部用默认值（Framework 自动识别 Next.js，Build Command 用 `package.json` 里的 `build`）。
+
+### 限流：这是公开的付费接口
+
+两个 API 路由没有登录，每一次调用都花钱。`src/lib/ratelimit.ts` 做两层：
+
+| 层 | 默认 | 挡的是什么 |
+|---|---|---|
+| 每 IP 固定窗口 | 对话 30 次 / 10 分钟；识图 10 次 / 10 分钟 | 单人刷 |
+| 全站日预算 | 对话 400 次 / 天；识图 80 次 / 天 | 换 IP 的脚本——换得掉 IP，换不掉总量 |
+
+超限返回 429，正文是角色语气的一句话（「今晚的桌子都坐满了」），前端照常显示。
+
+**没设 Upstash 时计数在进程内存里**：Vercel 每个函数实例各算各的，冷启动清零。
+这只挡得住突发，不要把它当成已经限住了。额度可用 `CAFE_RL_*` / `CAFE_DAILY_*` 覆盖，见 `.env.example`。
 
 ### 为什么语料要提交进仓库
 
@@ -163,7 +182,42 @@ VOYAGE_API_KEY=pa-...
 
 不设也能完整跑通，只是长句语义检索弱一些。
 
-验证检索质量：
+### 出处能核对到 §
+
+原著 OCR 文本没有可靠的标题行，之前每块只能拿首句快照当定位。现在 `build-index`
+沿着正文里连续的「§ N.」编号追踪（`src/lib/rag/sections.ts`），每块都归到
+「VI. Untersuchung §39」这样的位置——2663 块里 98% 有定位。前端出处可以真的翻书核对，
+评测也才有了可判定的黄金集。每卷的单元结构写在 `data/sources.json` 的 `structure` 里。
+
+### 检索质量
+
+`eval/husserl-gold.json`：32 条中文概念提问，每条对应《逻辑研究》里的一个 § 区间
+（按 1900–01 年初版目录定，粒度是「落在正确的那几节里」，不是逐段人工标注）。
+`npm run eval` 对三种配置各跑一遍：
+
+| 配置 | hit@1 | hit@3 | hit@5 | MRR@5 | 随机基线 hit@5 |
+| :-- | --: | --: | --: | --: | --: |
+| bm25（关掉扩展） | 0% | 0% | 0% | 0.00 | 7% |
+| bm25+expand（线上） | 31% | 59% | 75% | 0.47 | 7% |
+| hybrid（+Voyage 向量） | — | — | — | — | 未跑 |
+
+*2026-09-15，2663 块，topK=5。*
+
+三件事从这张表里读出来：
+
+1. **不扩展就是零**。中文提问对德文原著没有一个词面能对上，BM25 完全失效——这不是猜的。
+2. **扩展表 v1 只有 25%**。它是为餐桌场景写的（感知、时间、判断），对原著主干概念几乎没覆盖。
+   v2 把六个研究的核心术语补上（每个德文词都核对过在索引里的文档频率），到 75%。
+3. **剩下 8 条是语义题**（「是」从哪来、「意识」的几种意思、感性直观 vs 范畴直观），
+   词面扩展到头了，这是上向量的理由——`VOYAGE_API_KEY` 一设，评测会自动多跑一行。
+
+`src/lib/rag/retrieve.eval.test.ts` 把 hit@5 ≥ 65%、MRR ≥ 0.40 设成回归线，
+改分词或扩展表让检索变差会在 CI 里直接红。
+
+一个诚实的注脚：v2 术语表是看着这份评测的失败项补的。词都是标准译法、概念级而非提问级，
+但黄金集和术语表出自同一个人，overfit 的风险存在。下一步应该让别人出题。
+
+手动看几条：
 
 ```bash
 npx tsx scripts/smoke-retrieve.ts "我尝到了什么"
@@ -175,19 +229,24 @@ npx tsx scripts/smoke-retrieve.ts "我尝到了什么"
 
 ```
 data/
-  sources.json           语料源清单（改这里加语料）
+  sources.json           语料源清单 + 每卷的 § 结构（改这里加语料）
   corpus/{sources,cards,licensed}/
   index.json             构建产物
+eval/
+  husserl-gold.json      检索评测黄金集
 scripts/
   fetch-corpus.ts        下载公有领域原著
-  build-index.ts         分块 + BM25 统计 + 可选向量
-  smoke-retrieve.ts      检索冒烟测试
+  build-index.ts         分块 + § 定位 + BM25 统计 + 可选向量
+  eval-retrieve.ts       检索质量评测
+  smoke-retrieve.ts      手动看检索结果
 src/
   lib/
     personas.ts          人格库 / 禁语框架 / 桌位与解锁
     safety.ts            危机识别 + 禁语流式过滤
+    ratelimit.ts         每 IP 窗口 + 全站日预算
     prompt.ts            system prompt 组装 + 缓存分块
-    rag/                 tokenize / chunk / bm25 / embeddings / expand / retrieve
+    rag/                 tokenize / chunk / sections / bm25 / embeddings / expand / retrieve
+    **/*.test.ts         vitest；retrieve.eval.test.ts 是检索质量回归线
   app/
     page.tsx             大堂（固定机位，绣湖语法）
     table/[id]/          拼桌

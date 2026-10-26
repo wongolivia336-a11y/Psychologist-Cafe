@@ -12,6 +12,7 @@
 - 加入成年确认与知情说明页；确认状态只保留在当前标签页会话。
 - 将危机资源收敛到已核验的 `12356` 与当地紧急服务提示，删除未核验的旧号码。
 - 建立 `eval/personas`、`eval/grounding`、`eval/safety`、`eval/experience`，并提供 `npm run eval`。
+- `npm run eval` 运行胡塞尔黄金集检索评测；`npm run eval:contract` 运行上述四类确定性护栏。
 
 ## Mock / 未验证 / 阻塞
 
@@ -28,6 +29,7 @@ npm run test
 npm run test:turn
 npm run test:retrieve
 npm run eval
+npm run eval:contract
 ```
 
 截图回归需要真实浏览器、运行中的 Next 开发服务器和 `data/index.json`；当前回归使用隔离的 `NEXT_DIST_DIR=.next-visual`，避免和其他本地 Next 进程抢占 `.next`。

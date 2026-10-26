@@ -13,7 +13,11 @@
       "url": "https://archive.org/download/logischeuntersuc01hussuoft/logischeuntersuc01hussuoft_djvu.txt",
       "sourcePage": "https://archive.org/details/logischeuntersuc01hussuoft",
       "active": true,
-      "strip": { "kind": "archive-djvu" }
+      "strip": { "kind": "archive-djvu" },
+      "structure": {
+        "$comment": "正文 § 编号连续，build-index 据此给每块打上「Prolegomena §N」定位。",
+        "units": [{ "name": "Prolegomena", "sections": 72 }]
+      }
     },
     {
       "id": "husserl-lu-2",
@@ -28,7 +32,20 @@
       "sourcePage": "https://archive.org/details/logischeuntersu01hussgoog",
       "active": true,
       "optional": true,
-      "strip": { "kind": "archive-djvu" }
+      "strip": { "kind": "archive-djvu" },
+      "structure": {
+        "$comment": "六个研究各自从 § 1 重新编号；单元顺序与 § 数量取自 1901 年初版目录。",
+        "units": [
+          { "name": "Einleitung", "sections": 7 },
+          { "name": "I. Untersuchung", "sections": 35 },
+          { "name": "II. Untersuchung", "sections": 42 },
+          { "name": "III. Untersuchung", "sections": 25 },
+          { "name": "IV. Untersuchung", "sections": 14 },
+          { "name": "V. Untersuchung", "sections": 45 },
+          { "name": "VI. Untersuchung", "sections": 69 },
+          { "name": "Anhang", "sections": 8 }
+        ]
+      }
     },
 
     {
