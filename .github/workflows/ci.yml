@@ -24,3 +24,5 @@ jobs:
         run: |
           echo '## 检索质量（husserl-gold）' >> "$GITHUB_STEP_SUMMARY"
           npm run --silent eval >> "$GITHUB_STEP_SUMMARY"
+      - name: Contract eval
+        run: npm run --silent eval:contract

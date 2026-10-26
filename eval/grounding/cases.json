@@ -1,0 +1,21 @@
+[
+  {
+    "id": "zh-taste-to-husserl",
+    "query": "我尝到了什么",
+    "philosophers": ["husserl"],
+    "minHits": 1
+  },
+  {
+    "id": "zh-refusal-to-eating",
+    "query": "厌食 拒绝进食",
+    "philosophers": ["husserl"],
+    "minHits": 1,
+    "expectedTerms": ["Lust", "Unlust"]
+  },
+  {
+    "id": "de-phenomenology",
+    "query": "Evidenz Anschauung",
+    "philosophers": ["husserl"],
+    "minHits": 1
+  }
+]

@@ -68,6 +68,14 @@ const ZH_TO_DE: LangMap = {
   思维: ["Denken", "Denkgesetze", "Gedanke"],
   规律: ["Gesetz", "Gesetze", "Naturgesetz"],
 
+  // 进食相关表达：不把临床标签当成胡塞尔的理论术语，
+  // 只把它们引向语料里确实出现的「欲望、意志、身体与受阻」词群。
+  厌食: ["Essen", "Unlust", "Abneigung", "Lust"],
+  拒绝进食: ["Essen", "Widerstand", "gehemmt", "vermeiden", "Wille"],
+  不想吃: ["Essen", "Unlust", "Abneigung", "Widerstand"],
+  食欲: ["Lust", "Unlust", "Begehren", "Wille"],
+  进食: ["Essen", "Lust", "Begehren"],
+
   // ── 以下为 v2 扩充：《逻辑研究》各研究的核心术语 ──
   // 上面的表是为餐桌场景写的（感知、时间、判断），对原著的主干概念几乎没有覆盖。
   // eval/husserl-gold.json 的评测把这点量化出来了：32 条概念提问 hit@5 只有 25%。

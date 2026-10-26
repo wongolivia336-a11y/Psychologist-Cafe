@@ -3,31 +3,65 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Dish, { type DishData } from "./Dish";
+import ArtDirectionControl from "./ArtDirectionControl";
 import type { Persona } from "@/lib/personas";
 
-const MEAL_MS = 12 * 60 * 1000;
+type MemoryKey = "coin" | "photo" | "plate" | "key" | "uniform" | "letter";
 
-/** 记忆物件。选物件，不描述事件——投射性距离。 */
-const MEMORY_OBJECTS = [
-  { key: "coin", glyph: "◎", name: "一枚旧硬币" },
-  { key: "photo", glyph: "▣", name: "一张全家福" },
-  { key: "plate", glyph: "○", name: "一个空盘子" },
-  { key: "key", glyph: "⚿", name: "一把钥匙" },
-  { key: "uniform", glyph: "▤", name: "一件校服" },
-  { key: "letter", glyph: "✉", name: "一封没寄出的信" },
+const MEMORY_OBJECTS: { key: MemoryKey; name: string }[] = [
+  { key: "coin", name: "一枚旧硬币" },
+  { key: "photo", name: "一张全家福" },
+  { key: "plate", name: "一个空盘子" },
+  { key: "key", name: "一把钥匙" },
+  { key: "uniform", name: "一件校服" },
+  { key: "letter", name: "一封没寄出的信" },
 ];
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Source = {
+  id?: string;
   section: string;
   author: string;
   title: string;
-  year?: number;
   license: string;
   sourcePage?: string;
-  score: number;
-  via: string[];
 };
+
+function ObjectGlyph({ kind }: { kind: MemoryKey }) {
+  const common = {
+    width: 27,
+    height: 27,
+    viewBox: "0 0 27 27",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+  };
+
+  if (kind === "coin") {
+    return <svg {...common}><circle cx="13.5" cy="13.5" r="8" /><path d="M10.5 10.5c2-1.4 4.9-.8 5.7 1.2.7 1.9-.8 3.2-2.7 3.2-1.8 0-2.8.8-2.3 2.1.5 1.4 2.5 2 4.4 1.1" /></svg>;
+  }
+
+  if (kind === "photo") {
+    return <svg {...common}><rect x="5" y="6.5" width="17" height="14" rx="1" /><circle cx="10" cy="11" r="1.6" /><path d="m7 18 4.2-4 3.2 2.7 2.4-2.1 3.2 3.4" /></svg>;
+  }
+
+  if (kind === "plate") {
+    return <svg {...common}><ellipse cx="13.5" cy="14" rx="9" ry="6" /><ellipse cx="13.5" cy="13.3" rx="6.6" ry="3.8" /><path d="M4.5 14c.7 3.3 4.5 5.6 9 5.6s8.3-2.3 9-5.6" /></svg>;
+  }
+
+  if (kind === "key") {
+    return <svg {...common}><circle cx="9.5" cy="11" r="3.4" /><path d="m12 13.5 8.5 8.5M17 18.5l2-2M14.8 16.3l2-2" /></svg>;
+  }
+
+  if (kind === "uniform") {
+    return <svg {...common}><path d="m9 6 4.5 3L18 6l3.8 3.1-2.2 4.1-2.2-1.4v9.1H9.6v-9.1l-2.2 1.4-2.2-4.1L9 6Z" /><path d="M13.5 9v11.9M11.5 12h4" /></svg>;
+  }
+
+  return <svg {...common}><path d="M5 7.5h17v12H5z" /><path d="m5.5 8 8 6 8-6M5 19l5.8-5.2M22 19l-5.8-5.2" /></svg>;
+}
 
 export default function MealScene({ persona }: { persona: Persona }) {
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -35,33 +69,22 @@ export default function MealScene({ persona }: { persona: Persona }) {
   const [busy, setBusy] = useState(false);
   const [dish, setDish] = useState<DishData>(null);
   const [dishBusy, setDishBusy] = useState(false);
-  const [memory, setMemory] = useState<{ object: string; label: string } | null>(null);
+  const [memory, setMemory] = useState<{ key: MemoryKey; object: string; label: string } | null>(null);
   const [memLabel, setMemLabel] = useState("");
   const [pickingMemory, setPickingMemory] = useState(false);
   const [sources, setSources] = useState<Source[]>([]);
   const [showSources, setShowSources] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [crisisActive, setCrisisActive] = useState(false);
+  const [sceneKind, setSceneKind] = useState<"observe" | "respond" | "question" | "silence">("observe");
 
-  const startedAt = useRef<number>(Date.now());
   const scroller = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
-  // 开场白
   useEffect(() => {
     const o = persona.openings;
-    if (o.length) {
-      setMessages([{ role: "assistant", content: o[Math.floor(Math.random() * o.length)] }]);
-    }
+    if (o.length) setMessages([{ role: "assistant", content: o[Math.floor(Math.random() * o.length)] }]);
   }, [persona]);
-
-  // 上色进度：这顿饭的唯一计时器，不显示数字
-  useEffect(() => {
-    const t = setInterval(() => {
-      setProgress(Math.min(1, (Date.now() - startedAt.current) / MEAL_MS));
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -84,7 +107,7 @@ export default function MealScene({ persona }: { persona: Persona }) {
             personaId: persona.id,
             messages: next,
             dish,
-            memory,
+            memory: memory ? { object: memory.object, label: memory.label } : null,
           }),
         });
 
@@ -118,15 +141,19 @@ export default function MealScene({ persona }: { persona: Persona }) {
               continue;
             }
 
-            if (ev === "sources") {
+            if (ev === "crisis") {
+              setCrisisActive(true);
+            } else if (ev === "scene") {
+              setSceneKind((payload as { kind: "observe" | "respond" | "question" | "silence" }).kind);
+            } else if (ev === "sources") {
               setSources(payload as Source[]);
             } else if (ev === "text") {
-              const { text: t } = payload as { text: string };
+              const { text: chunk } = payload as { text: string };
               setMessages((prev) => {
                 const copy = [...prev];
                 copy[copy.length - 1] = {
                   role: "assistant",
-                  content: copy[copy.length - 1].content + t,
+                  content: copy[copy.length - 1].content + chunk,
                 };
                 return copy;
               });
@@ -142,7 +169,7 @@ export default function MealScene({ persona }: { persona: Persona }) {
         setBusy(false);
       }
     },
-    [busy, messages, persona.id, dish, memory],
+    [busy, dish, memory, messages, persona.id],
   );
 
   const onPhoto = useCallback(async (file: File) => {
@@ -161,8 +188,6 @@ export default function MealScene({ persona }: { persona: Persona }) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setDish(json as DishData);
-      startedAt.current = Date.now();
-      setProgress(0);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -171,56 +196,34 @@ export default function MealScene({ persona }: { persona: Persona }) {
   }, []);
 
   return (
-    <main className="relative min-h-screen">
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 22%, #2a221a 0%, var(--ink-2) 45%, var(--ink) 100%)",
-        }}
-      />
-
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col px-5 py-6 sm:px-8">
-        {/* 抬头 */}
-        <header className="flex items-start justify-between gap-4">
-          <Link
-            href="/"
-            className="text-[11px] tracking-widest text-[var(--bone-dim)] transition-colors hover:text-[var(--bone)]"
-          >
-            ← 离席
-          </Link>
-          <div className="text-right">
-            <div className="text-sm tracking-widest text-[var(--bone)]">{persona.name}</div>
-            <div className="text-[10px] tracking-wider text-[var(--bone-dim)]">
-              {persona.latin} · {persona.years}
-            </div>
+    <main className="meal-shell">
+      <div className="meal-layout">
+        <header className="meal-header">
+          <Link href="/" className="quiet-link">← 离席</Link>
+          <ArtDirectionControl />
+          <div className="persona-heading">
+            <div className="scene-kicker">桌边来客</div>
+            <div className="persona-heading__name">{persona.name}</div>
+            <div className="persona-heading__latin">{persona.latin}</div>
           </div>
         </header>
 
-        <div className="mt-4 grid flex-1 gap-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
-          {/* 左：桌面 */}
-          <section className="flex flex-col items-center gap-4">
-            {/* 面具 */}
-            <div className="flex flex-col items-center gap-1.5">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-full border text-[10px] tracking-widest"
-                style={{ borderColor: "var(--edge)", background: "#1a1512", color: "var(--bone-dim)" }}
-                title={persona.maskNote}
-              >
-                {persona.mask}
-              </div>
-              <div className="max-w-[260px] text-center text-[10px] leading-relaxed text-[var(--bone-dim)] opacity-70">
-                {persona.maskNote}
-              </div>
+        <div className="meal-grid">
+          <section className="table-stage" aria-label="桌上的静物">
+            <div className="mask-seat">
+              <div className="mask-seat__object" title={persona.maskNote}>{persona.mask}</div>
+              <div className="mask-seat__note">{persona.maskNote}</div>
             </div>
 
-            <Dish dish={dish} progress={progress} />
+            <div className="dish-stage">
+              <Dish dish={dish} />
+            </div>
 
-            {/* 拍照 */}
             <input
               ref={fileInput}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              capture="environment"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -228,54 +231,41 @@ export default function MealScene({ persona }: { persona: Persona }) {
                 e.target.value = "";
               }}
             />
-            <button
-              onClick={() => fileInput.current?.click()}
-              disabled={dishBusy}
-              className="rounded-sm border px-4 py-1.5 text-[11px] tracking-widest transition-colors disabled:opacity-40"
-              style={{ borderColor: "var(--edge)", color: "var(--bone-dim)" }}
-            >
-              {dishBusy ? "正在落到桌上…" : dish ? "换一张" : "把今天这份放上桌"}
-            </button>
+            <div className="ritual-actions">
+              <button type="button" onClick={() => fileInput.current?.click()} disabled={dishBusy} className="ritual-button">
+                {dishBusy ? "正在落到桌上…" : dish ? "换一幅静物" : "把眼前这一份放上桌"}
+              </button>
+            </div>
 
-            {/* 记忆物件位 */}
-            <div className="w-full max-w-[320px]">
+            <div className="object-tray">
               {memory ? (
-                <div className="rounded-sm border p-3 text-center" style={{ borderColor: "var(--edge)" }}>
-                  <div className="text-lg text-[var(--amber-soft)]">
-                    {MEMORY_OBJECTS.find((m) => m.name === memory.object)?.glyph}
+                <div className="object-settled">
+                  <div className="object-settled__copy">
+                    <ObjectGlyph kind={memory.key} />
+                    <span>
+                      {memory.object}
+                      {memory.label && <span className="object-settled__label">「{memory.label}」</span>}
+                    </span>
                   </div>
-                  <div className="mt-1 text-[11px] text-[var(--bone)]">{memory.object}</div>
-                  {memory.label && (
-                    <div className="mt-0.5 text-[10px] italic text-[var(--bone-dim)]">
-                      「{memory.label}」
-                    </div>
-                  )}
-                  <button
-                    onClick={() => setMemory(null)}
-                    className="mt-2 text-[10px] text-[var(--bone-dim)] underline underline-offset-2"
-                  >
-                    收回来
-                  </button>
+                  <button type="button" onClick={() => setMemory(null)} className="quiet-link">收回来</button>
                 </div>
               ) : pickingMemory ? (
-                <div className="rounded-sm border p-3" style={{ borderColor: "var(--edge)" }}>
-                  <div className="mb-2 text-[10px] leading-relaxed text-[var(--bone-dim)]">
-                    放一件东西在桌上。不用解释它。
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {MEMORY_OBJECTS.map((m) => (
+                <>
+                  <div className="object-tray__label">放一件东西在桌上。不用解释它。</div>
+                  <div className="object-tray__grid">
+                    {MEMORY_OBJECTS.map((item) => (
                       <button
-                        key={m.key}
+                        key={item.key}
+                        type="button"
                         onClick={() => {
-                          setMemory({ object: m.name, label: memLabel.trim() });
+                          setMemory({ key: item.key, object: item.name, label: memLabel.trim() });
                           setPickingMemory(false);
                           setMemLabel("");
                         }}
-                        className="rounded-sm border px-2 py-2 text-center transition-colors hover:border-[var(--amber)]"
-                        style={{ borderColor: "var(--edge)" }}
+                        className="object-token"
                       >
-                        <div className="text-base text-[var(--bone-dim)]">{m.glyph}</div>
-                        <div className="mt-0.5 text-[9px] text-[var(--bone-dim)]">{m.name}</div>
+                        <ObjectGlyph kind={item.key} />
+                        <span className="object-token__name">{item.name}</span>
                       </button>
                     ))}
                   </div>
@@ -283,63 +273,59 @@ export default function MealScene({ persona }: { persona: Persona }) {
                     value={memLabel}
                     onChange={(e) => setMemLabel(e.target.value)}
                     placeholder="想写一句就写（可以不写）"
-                    className="mt-2 w-full bg-transparent text-[11px] text-[var(--bone)] outline-none placeholder:text-[var(--bone-dim)] placeholder:opacity-50"
+                    className="field-note"
+                    aria-label="记忆物件的补充说明"
                   />
-                </div>
+                </>
               ) : (
-                <button
-                  onClick={() => setPickingMemory(true)}
-                  className="w-full rounded-sm border border-dashed py-3 text-[11px] tracking-widest text-[var(--bone-dim)] transition-colors hover:border-[var(--amber)]"
-                  style={{ borderColor: "var(--edge)" }}
-                >
-                  ＋ 桌上还有一个空位
+                <button type="button" onClick={() => setPickingMemory(true)} className="ritual-button w-full">
+                  桌上还有一个空位
                 </button>
               )}
             </div>
           </section>
 
-          {/* 右：对话 */}
-          <section className="flex min-h-[420px] flex-col">
-            <div ref={scroller} className="flex-1 space-y-5 overflow-y-auto pr-2">
-              {messages.map((m, i) => (
-                <div
-                  key={i}
-                  className={`fade-up whitespace-pre-wrap text-[13px] leading-[1.9] ${
-                    m.role === "user"
-                      ? "pl-8 text-right text-[var(--bone-dim)]"
-                      : "pr-6 text-[var(--bone)]"
-                  }`}
-                >
-                  {m.content || (busy && i === messages.length - 1 ? "…" : "")}
-                </div>
-              ))}
-              {error && (
-                <div className="rounded-sm border px-3 py-2 text-[11px] text-[var(--blood)]" style={{ borderColor: "var(--blood)" }}>
-                  {error}
-                </div>
-              )}
+          <section className={`conversation-panel${sceneKind === "silence" ? " conversation-panel--silence" : ""}`} aria-label="桌边的谈话">
+            <div className="conversation-heading">
+              <div className="conversation-heading__title">桌边的谈话</div>
+              <div className="conversation-heading__note">可以说，也可以坐着</div>
             </div>
 
-            {/* 出处：让 RAG 是可验证的，不是黑箱 */}
+            <div ref={scroller} className="conversation-scroll" aria-busy={busy}>
+              {messages.map((message, index) => {
+                const pending = busy && index === messages.length - 1 && !message.content;
+                const guest = message.role === "user";
+                return (
+                  <div key={`${message.role}-${index}`} className={`conversation-entry fade-up${guest ? " conversation-entry--guest" : ""}`}>
+                    <div className="conversation-entry__mark">{guest ? "你" : "他"}</div>
+                    <div className="conversation-entry__body">
+                      {pending ? (
+                        <span className="turn-waiting"><span className="turn-waiting__ember" />他在看</span>
+                      ) : message.content}
+                    </div>
+                  </div>
+                );
+              })}
+              {error && <div className="error-note" role="alert">{error}</div>}
+            </div>
+
             {sources.length > 0 && (
-              <div className="mt-3 border-t pt-2" style={{ borderColor: "var(--edge)" }}>
-                <button
-                  onClick={() => setShowSources((v) => !v)}
-                  className="text-[10px] tracking-widest text-[var(--bone-dim)]"
-                >
-                  {showSources ? "▾" : "▸"} 他刚才翻的是哪几页（{sources.length}）
+              <div className="source-drawer">
+                <button type="button" onClick={() => setShowSources((v) => !v)} className="source-drawer__toggle" aria-expanded={showSources}>
+                  {showSources ? "收起原页" : "翻开他刚才看过的原页"}
                 </button>
                 {showSources && (
-                  <ul className="mt-1.5 space-y-1.5">
-                    {sources.map((s, i) => (
-                      <li key={i} className="text-[10px] leading-relaxed text-[var(--bone-dim)]">
-                        <span className="text-[var(--amber-soft)]">[{i + 1}]</span>{" "}
-                        {s.author}《{s.title}》{s.year ?? ""}
-                        <span className="ml-1 opacity-60">
-                          · {s.license === "public-domain" ? "公有领域原文" : "概念卡片"} ·{" "}
-                          {s.via.join("+")} · {s.score.toFixed(3)}
+                  <ul className="source-drawer__list">
+                    {sources.map((source, index) => (
+                      <li key={`${source.title}-${index}`} className="source-drawer__item">
+                        {source.sourcePage ? (
+                          <a href={source.sourcePage} target="_blank" rel="noreferrer">{source.author}《{source.title}》</a>
+                        ) : (
+                          <span>{source.author}《{source.title}》</span>
+                        )}
+                        <span className="source-drawer__section">
+                          {source.license === "public-domain" ? "公有领域原文" : source.license === "original-summary" ? "概念卡片" : "授权文本"} · {source.section}
                         </span>
-                        <div className="mt-0.5 opacity-60">{s.section}</div>
                       </li>
                     ))}
                   </ul>
@@ -347,8 +333,7 @@ export default function MealScene({ persona }: { persona: Persona }) {
               </div>
             )}
 
-            {/* 输入 */}
-            <div className="mt-3 flex items-end gap-2 border-t pt-3" style={{ borderColor: "var(--edge)" }}>
+            <div className="conversation-form">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -360,20 +345,15 @@ export default function MealScene({ persona }: { persona: Persona }) {
                 }}
                 rows={2}
                 placeholder="说点什么，或者就这样坐着。"
-                className="flex-1 resize-none bg-transparent text-[13px] leading-relaxed text-[var(--bone)] outline-none placeholder:text-[var(--bone-dim)] placeholder:opacity-50"
+                className="conversation-input"
+                aria-label="对桌边来客说话"
               />
-              <button
-                onClick={() => void send(input)}
-                disabled={busy || !input.trim()}
-                className="shrink-0 rounded-sm border px-3 py-1.5 text-[11px] tracking-widest transition-colors disabled:opacity-30"
-                style={{ borderColor: "var(--edge)", color: "var(--bone-dim)" }}
-              >
-                说
+              <button type="button" onClick={() => void send(input)} disabled={busy || !input.trim()} className="conversation-submit">
+                落下一句
               </button>
             </div>
-            <p className="mt-2 text-[10px] leading-relaxed text-[var(--bone-dim)] opacity-60">
-              这顿饭结束就结束了，不会被记下来。
-              {persona.grounding !== "primary" && ` ${persona.groundingNote}`}
+            <p className="conversation-footnote">
+              这顿饭结束就结束了，不会被记下来。{crisisActive ? " 你可以先离开桌边，去找一个真实的人。" : persona.grounding !== "primary" ? ` ${persona.groundingNote}` : ""}
             </p>
           </section>
         </div>

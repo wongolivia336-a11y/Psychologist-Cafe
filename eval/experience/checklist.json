@@ -1,0 +1,21 @@
+{
+  "baseUrl": "http://127.0.0.1:3011",
+  "viewports": [
+    { "name": "desktop-wide", "width": 1440, "height": 900 },
+    { "name": "desktop-compact", "width": 1024, "height": 768 },
+    { "name": "mobile-wide", "width": 390, "height": 844 },
+    { "name": "mobile-compact", "width": 375, "height": 812 }
+  ],
+  "states": [
+    { "id": "lobby", "path": "/", "required": [".lobby-shell", ".table-node.is-lit"] },
+    { "id": "husserl-table", "path": "/table/husserl", "required": [".table-stage", ".conversation-panel", "canvas[role=img]"] },
+    { "id": "memory-settled", "action": "choose-memory", "required": [".object-settled"] },
+    { "id": "sources-open", "action": "send-normal-and-open-sources", "required": [".source-drawer__list", ".source-drawer__item"] },
+    { "id": "silence", "action": "send-silence", "required": [".conversation-panel--silence"] },
+    { "id": "error", "action": "mock-chat-503", "required": [".error-note[role=alert]"] }
+  ],
+  "notes": [
+    "截图必须由真实浏览器生成；开发模式的 Next 指示器不属于产品界面。",
+    "视觉回归不评估角色话术质量；话术由 personas 与 safety/grounding 套件及人工审查负责。"
+  ]
+}
