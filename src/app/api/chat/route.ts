@@ -7,6 +7,7 @@ import { StreamingFilter, crisisMessage, detectCrisis, SOFT_NOTE } from "@/lib/s
 import { TURN_PLAN_TOOL, mockTurn, normalizeTurnPlan, renderTurnPlan, type TurnPlan } from "@/lib/ai/turn-plan";
 import { z } from "zod";
 import { checkLimit, clientIp, limitResponse } from "@/lib/ratelimit";
+import { userConversation } from "@/lib/chat-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ const ChatBodySchema = z.object({
   messages: z.array(
     z.object({
       role: z.enum(["user", "assistant"]),
-      content: z.string().max(12_000),
+      content: z.string().min(1).max(12_000),
     }),
   ).min(1).max(40),
   dish: z.object({
@@ -54,6 +55,10 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "请求内容不符合这张桌子的格式" }, { status: 400 });
   }
   const body: Body = parsed.data;
+  const conversation = userConversation(body.messages);
+  if (!conversation) {
+    return Response.json({ error: "请先落下一句自己的话。" }, { status: 400 });
+  }
 
   // 限流放在参数校验之后、任何会花钱的调用之前
   const limit = await checkLimit("chat", clientIp(req.headers));
@@ -151,10 +156,7 @@ export async function POST(req: NextRequest) {
             })),
             tools: [TURN_PLAN_TOOL],
             tool_choice: { type: "tool", name: "compose_turn" },
-            messages: body.messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+            messages: [{ role: "user", content: conversation }],
           });
           const toolBlock = msg.content.find((block) => block.type === "tool_use");
           plan = normalizeTurnPlan(toolBlock?.type === "tool_use" ? toolBlock.input : null, sources.length);
@@ -181,7 +183,7 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error("[/api/chat]", err);
         controller.enqueue(
-          sse("error", { message: (err as Error).message ?? "未知错误" }),
+          sse("error", { message: "桌边的灯暂时暗了下来。请稍后再试。" }),
         );
       } finally {
         controller.close();

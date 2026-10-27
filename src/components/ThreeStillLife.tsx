@@ -23,14 +23,19 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
   const [themeVersion, setThemeVersion] = useState(0);
 
   useEffect(() => {
-    const themeObserver = new MutationObserver(() => {
+    const rerenderForAppearance = () => {
       setThemeVersion((version) => version + 1);
-    });
+    };
+    const themeObserver = new MutationObserver(rerenderForAppearance);
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["data-direction"],
+      attributeFilter: ["data-direction", "data-theme", "data-contrast"],
     });
-    return () => themeObserver.disconnect();
+    window.addEventListener("cafe:appearance", rerenderForAppearance);
+    return () => {
+      themeObserver.disconnect();
+      window.removeEventListener("cafe:appearance", rerenderForAppearance);
+    };
   }, []);
 
   useEffect(() => {
@@ -69,7 +74,8 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.05;
+        const styles = getComputedStyle(document.documentElement);
+        renderer.toneMappingExposure = Number(styles.getPropertyValue("--scene-exposure").trim()) || 1.05;
 
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
@@ -80,13 +86,13 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
         root.rotation.x = -0.1;
         scene.add(root);
 
-        const styles = getComputedStyle(document.documentElement);
-        const ink = styles.getPropertyValue("--ink").trim() || "#11171a";
-        const paper = styles.getPropertyValue("--paper").trim() || "#d7dfdc";
-        const sceneLight = styles.getPropertyValue("--scene-light").trim() || paper;
+        const ink = styles.getPropertyValue("--scene-shadow").trim() || "#11171a";
+        const paper = styles.getPropertyValue("--scene-paper").trim() || "#d7dfdc";
+        const ceramic = styles.getPropertyValue("--scene-ceramic").trim() || "#e9eeeb";
+        const sceneLight = styles.getPropertyValue("--scene-light").trim() || ceramic;
         const sceneShadow = styles.getPropertyValue("--scene-shadow").trim() || ink;
         const accent = styles.getPropertyValue("--candle").trim() || "#476f87";
-        const surface = styles.getPropertyValue("--ink-raised").trim() || "#263238";
+        const surface = styles.getPropertyValue("--moss-soft").trim() || "#9faead";
         const foodColors = (dish?.palette ?? [])
           .filter((value) => /^#[0-9a-f]{3,8}$/i.test(value))
           .slice(0, 5);
@@ -108,7 +114,7 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
 
         const plate = new THREE.Group();
         const plateMaterial = new THREE.MeshPhysicalMaterial({
-          color: paper,
+          color: ceramic,
           roughness: 0.3,
           metalness: 0,
           clearcoat: 0.25,
@@ -198,7 +204,7 @@ export default function ThreeStillLife({ dish, onFallback }: Props) {
         const watchMaterial = new THREE.MeshPhysicalMaterial({ color: accent, roughness: 0.27, metalness: 0.68 });
         const watchFace = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.43, 0.12, 48), watchMaterial);
         const watchRing = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.035, 8, 48), watchMaterial);
-        const handMaterial = new THREE.MeshBasicMaterial({ color: paper });
+        const handMaterial = new THREE.MeshBasicMaterial({ color: ceramic });
         const handLong = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.04, 0.24), handMaterial);
         const handShort = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.16), handMaterial);
         watchRing.rotation.x = Math.PI / 2;
