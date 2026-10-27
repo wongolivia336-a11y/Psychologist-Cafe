@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
       return Response.json(
-        { error: "模型没有返回可解析的 JSON", raw: text },
+        { error: "模型没有返回可解析的静物描述" },
         { status: 502 },
       );
     }
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[/api/dish]", err);
     return Response.json(
-      { error: (err as Error).message ?? "识别失败" },
+      { error: "这张静物暂时没有显影。请稍后再试。" },
       { status: 500 },
     );
   }

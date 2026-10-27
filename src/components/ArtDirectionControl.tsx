@@ -1,108 +1,74 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-export type ArtDirection = "gallery" | "mineral" | "nocturnal";
-
-const DEFAULT_BRIGHTNESS = 100;
-const MIN_BRIGHTNESS = 72;
-const MAX_BRIGHTNESS = 116;
-
-const OPTIONS: { id: ArtDirection; label: string; short: string }[] = [
-  { id: "gallery", label: "Gallery White", short: "G" },
-  { id: "mineral", label: "Mineral Monochrome", short: "M" },
-  { id: "nocturnal", label: "Nocturnal Modernism", short: "N" },
-];
-
-function applyDirection(direction: ArtDirection) {
-  document.documentElement.dataset.direction = direction;
-  try {
-    window.sessionStorage.setItem("philosopher-cafe-direction", direction);
-  } catch {
-    // Private browsing and restricted storage should not affect the scene.
-  }
-}
-
-function applyBrightness(brightness: number) {
-  document.documentElement.dataset.brightness = String(brightness);
-  document.documentElement.style.setProperty("--scene-brightness", String(brightness / 100));
-  try {
-    window.sessionStorage.setItem("philosopher-cafe-brightness", String(brightness));
-  } catch {
-    // Private browsing and restricted storage should not affect the scene.
-  }
-}
-
-function readBrightness(value: string | null) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return DEFAULT_BRIGHTNESS;
-  return Math.min(MAX_BRIGHTNESS, Math.max(MIN_BRIGHTNESS, Math.round(parsed)));
-}
+import { useEffect, useRef, useState } from "react";
+import { APPEARANCE_KEY, DEFAULT_APPEARANCE, applyAppearance, readAppearance, type AppearancePreferences } from "@/lib/appearance";
 
 export default function ArtDirectionControl() {
-  const [direction, setDirection] = useState<ArtDirection>("gallery");
-  const [brightness, setBrightness] = useState(DEFAULT_BRIGHTNESS);
+  const [preferences, setPreferences] = useState(DEFAULT_APPEARANCE);
+  const [open, setOpen] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const current = useRef(preferences);
+  const transition = useRef<{ skipTransition: () => void } | null>(null);
 
   useEffect(() => {
-    let saved: string | null = null;
-    let savedBrightness: string | null = null;
-    try {
-      saved = window.sessionStorage.getItem("philosopher-cafe-direction");
-      savedBrightness = window.sessionStorage.getItem("philosopher-cafe-brightness");
-    } catch {
-      saved = null;
-      savedBrightness = null;
-    }
-    const next = OPTIONS.some((option) => option.id === saved) ? (saved as ArtDirection) : "gallery";
-    const nextBrightness = readBrightness(savedBrightness);
-    setDirection(next);
-    setBrightness(nextBrightness);
-    applyDirection(next);
-    applyBrightness(nextBrightness);
+    const restore = () => { const p = readAppearance(); current.current = p; setPreferences(p); applyAppearance(p); };
+    restore();
+    const scheme = matchMedia("(prefers-color-scheme: dark)");
+    const motion = matchMedia("(prefers-reduced-motion: reduce)");
+    const system = () => applyAppearance(current.current);
+    scheme.addEventListener("change", system); motion.addEventListener("change", system);
+    window.addEventListener("storage", restore);
+    return () => { scheme.removeEventListener("change", system); motion.removeEventListener("change", system); window.removeEventListener("storage", restore); };
   }, []);
 
-  const brightnessLabel = brightness < 92 ? "偏暗" : brightness > 106 ? "偏亮" : "平衡";
+  useEffect(() => {
+    if (!open) return;
+    panel.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
+    const outside = (e: PointerEvent) => {
+      if (!panel.current?.contains(e.target as Node) && !trigger.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { e.preventDefault(); setOpen(false); trigger.current?.focus({ preventScroll: true }); }
+    };
+    document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };
+  }, [open]);
 
-  return (
-    <div className="art-direction-control" aria-label="场景色彩与亮度">
-      <div className="art-direction-control__group">
-        <span className="art-direction-control__label">色调</span>
-        <div className="art-direction-control__options">
-          {OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className={direction === option.id ? "is-active" : ""}
-              aria-label={option.label}
-              aria-pressed={direction === option.id}
-              onClick={() => {
-                setDirection(option.id);
-                applyDirection(option.id);
-              }}
-            >
-              {option.short}
-            </button>
-          ))}
-        </div>
-      </div>
+  function change(patch: Partial<AppearancePreferences>, animate = false) {
+    const next = { ...current.current, ...patch };
+    current.current = next; setPreferences(next);
+    try { localStorage.setItem(APPEARANCE_KEY, JSON.stringify(next)); } catch { /* In-page settings still work. */ }
+    transition.current?.skipTransition();
+    const reduced = next.motion === "reduced" || (next.motion === "system" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+    if (animate && !reduced && document.startViewTransition) {
+      transition.current = document.startViewTransition(() => applyAppearance(current.current));
+    } else applyAppearance(next);
+  }
 
-      <label className="art-direction-control__brightness">
-        <span className="art-direction-control__label">暗度</span>
-        <input
-          type="range"
-          min={MIN_BRIGHTNESS}
-          max={MAX_BRIGHTNESS}
-          step={1}
-          value={brightness}
-          aria-label="调整场景暗度"
-          onChange={(event) => {
-            const next = Number(event.currentTarget.value);
-            setBrightness(next);
-            applyBrightness(next);
-          }}
-        />
-        <span className="art-direction-control__value" aria-live="polite">{brightnessLabel}</span>
-      </label>
+  function choices<K extends "theme" | "direction" | "contrast" | "motion">(key: K, label: string, options: [AppearancePreferences[K], string][]) {
+    return <fieldset><legend>{label}</legend><div className="appearance-options">
+      {options.map(([value, text]) => <button key={value} type="button" aria-pressed={preferences[key] === value}
+        onClick={() => change({ [key]: value }, key === "theme" || key === "direction")}>{text}</button>)}
+    </div></fieldset>;
+  }
+
+  return <div className="art-direction-control" onBlur={e => {
+    if (e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false);
+  }}>
+    <button ref={trigger} type="button" className="appearance-trigger" aria-expanded={open} aria-controls="appearance-panel"
+      onClick={() => setOpen(v => !v)}>外观</button>
+    <div ref={panel} id="appearance-panel" className="appearance-panel" inert={!open} data-open={open} aria-label="外观设置">
+      <div className="appearance-title"><span>光线与色调</span><button type="button" aria-label="关闭外观设置" onClick={() => { setOpen(false); trigger.current?.focus(); }}>关闭</button></div>
+      {choices("theme", "明暗模式", [["light", "浅色"], ["dark", "深色"], ["system", "跟随系统"]])}
+      {choices("direction", "视觉方向", [["gallery", "画廊"], ["mineral", "矿物"], ["nocturnal", "夜色"]])}
+      <label className="appearance-range">暗度 <span>{preferences.brightness < 92 ? "偏暗" : preferences.brightness > 106 ? "偏亮" : "平衡"}</span>
+        <input aria-label="调整场景暗度" type="range" min="72" max="116" value={preferences.brightness} onChange={e => change({ brightness: Number(e.target.value) })} /></label>
+      <label className="appearance-range">色彩浓度 <span>{preferences.chroma < 34 ? "淡" : preferences.chroma > 66 ? "浓" : "适中"}</span>
+        <input aria-label="调整色彩浓度" type="range" min="0" max="100" value={preferences.chroma} onChange={e => change({ chroma: Number(e.target.value) })} /></label>
+      {choices("contrast", "文字对比", [["normal", "标准"], ["high", "增强"]])}
+      {choices("motion", "动态效果", [["system", "跟随系统"], ["reduced", "减少"], ["full", "完整"]])}
+      <button type="button" className="appearance-reset" onClick={() => change(DEFAULT_APPEARANCE, true)}>恢复默认</button>
     </div>
-  );
+  </div>;
 }

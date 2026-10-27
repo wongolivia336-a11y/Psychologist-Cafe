@@ -46,6 +46,9 @@ async function confirmAdult(page) {
 
 async function capture(page, viewport, state) {
   const file = path.join(OUTPUT_DIR, `${viewport.name}--${state}.png`);
+  if (["sources-open", "silence", "error"].includes(state)) {
+    await page.locator(".conversation-panel").scrollIntoViewIfNeeded();
+  }
   await page.screenshot({ path: file, fullPage: false, animations: "disabled" });
   return file;
 }
@@ -109,6 +112,101 @@ async function runViewport(browser, viewport) {
   }
 }
 
+async function choose(page, name) {
+  await page.getByRole("button", { name, exact: true }).click();
+}
+
+async function setRangeWithKeys(page, name, value) {
+  const range = page.getByLabel(name, { exact: true });
+  await range.focus();
+  await page.keyboard.press("Home");
+  for (let index = 0; index < value; index += 1) {
+    await page.keyboard.press("ArrowRight");
+  }
+}
+
+async function assertAppearance(page, expected) {
+  const actual = await page.evaluate(() => ({
+    theme: document.documentElement.dataset.theme,
+    contrast: document.documentElement.dataset.contrast,
+    motion: document.documentElement.dataset.motion,
+  }));
+  for (const [key, value] of Object.entries(expected)) {
+    if (actual[key] !== value) throw new Error(`外观状态错误：${key}=${actual[key]}，预期 ${value}`);
+  }
+}
+
+async function runAppearanceAudit(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    deviceScaleFactor: 1,
+    reducedMotion: "no-preference",
+  });
+  const page = await context.newPage();
+  const captures = [];
+  const themes = [["浅色", "light"], ["深色", "dark"]];
+  const chroma = [[0, "淡"], [50, "适中"], [100, "浓"]];
+  const contrasts = [["标准", "normal"], ["增强", "high"]];
+  const motion = [["完整", "full"], ["减少", "reduced"]];
+
+  try {
+    await page.goto(`${BASE_URL}/table/husserl`, { waitUntil: "domcontentloaded" });
+    await confirmAdult(page);
+    await page.locator(".meal-shell").waitFor();
+    await page.getByRole("button", { name: "外观", exact: true }).click();
+    await page.locator(".appearance-panel[data-open='true']").waitFor();
+
+    let combinations = 0;
+    for (const [themeLabel, theme] of themes) {
+      await choose(page, themeLabel);
+      for (const [chromaValue, chromaLabel] of chroma) {
+        await setRangeWithKeys(page, "调整色彩浓度", chromaValue);
+        const chromaText = await page.locator(".appearance-range").nth(1).locator("span").textContent();
+        if (chromaText !== chromaLabel) throw new Error(`色彩浓度标签错误：${chromaText}，预期 ${chromaLabel}`);
+        for (const [contrastLabel, contrast] of contrasts) {
+          await choose(page, contrastLabel);
+          for (const [motionLabel, motionValue] of motion) {
+            await choose(page, motionLabel);
+            await assertAppearance(page, { theme, contrast, motion: motionValue });
+            combinations += 1;
+          }
+        }
+      }
+    }
+
+    await setRangeWithKeys(page, "调整场景暗度", 28);
+    await page.screenshot({ path: path.join(OUTPUT_DIR, "appearance-desktop-dark.png"), animations: "disabled" });
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.locator(".meal-shell").waitFor();
+    await assertAppearance(page, { theme: "dark", contrast: "high", motion: "reduced" });
+
+    const trigger = page.getByRole("button", { name: "外观", exact: true });
+    await trigger.click();
+    await page.keyboard.press("Escape");
+    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("Escape 没有关闭外观设置");
+    await trigger.focus();
+    if (!(await trigger.evaluate((element) => document.activeElement === element))) throw new Error("外观设置关闭后焦点没有回到触发器");
+
+    await trigger.click();
+    await page.locator(".table-stage").click({ position: { x: 5, y: 5 } });
+    if (await trigger.getAttribute("aria-expanded") !== "false") throw new Error("点击外部没有关闭外观设置");
+
+    await trigger.click();
+    await choose(page, "浅色");
+    await choose(page, "标准");
+    await choose(page, "完整");
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator(".appearance-panel[data-open='true']").waitFor();
+    captures.push(path.join(OUTPUT_DIR, "appearance-mobile-light.png"));
+    await page.screenshot({ path: captures[0], animations: "disabled" });
+
+    return { combinations, captures };
+  } finally {
+    await context.close();
+  }
+}
+
 async function main() {
   await mkdir(OUTPUT_DIR, { recursive: true });
   const browser = await chromium.launch({
@@ -123,14 +221,17 @@ async function main() {
       results.push({ viewport, captures });
       console.log(`✓ ${viewport.name}: ${captures.length} screenshots`);
     }
+    const appearance = await runAppearanceAudit(browser);
+    console.log(`✓ 外观：${appearance.combinations} 个浅/深、色彩、对比和动态组合；${appearance.captures.length} 张补充截图`);
     const report = {
       baseUrl: BASE_URL,
       browser: await browser.version(),
       generatedAt: new Date().toISOString(),
       results,
+      appearance,
     };
     await writeFile(path.join(OUTPUT_DIR, "report.json"), `${JSON.stringify(report, null, 2)}\n`);
-    console.log(`视觉回归通过：${VIEWPORTS.length} 个视口，${VIEWPORTS.length * 6} 张截图`);
+    console.log(`视觉回归通过：${VIEWPORTS.length} 个视口，${VIEWPORTS.length * 6 + appearance.captures.length + 1} 张截图`);
     console.log(`输出：${OUTPUT_DIR}`);
   } finally {
     await browser.close();

@@ -80,6 +80,8 @@ export default function MealScene({ persona }: { persona: Persona }) {
 
   const scroller = useRef<HTMLDivElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const requestAbort = useRef<AbortController | null>(null);
+  const followConversation = useRef(true);
 
   useEffect(() => {
     const o = persona.openings;
@@ -87,8 +89,13 @@ export default function MealScene({ persona }: { persona: Persona }) {
   }, [persona]);
 
   useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
-  }, [messages, error]);
+    const node = scroller.current;
+    if (node && followConversation.current) {
+      node.scrollTo({ top: node.scrollHeight, behavior: "smooth" });
+    }
+  }, [messages]);
+
+  useEffect(() => () => requestAbort.current?.abort(), []);
 
   const send = useCallback(
     async (text: string) => {
@@ -98,11 +105,15 @@ export default function MealScene({ persona }: { persona: Persona }) {
       setMessages([...next, { role: "assistant", content: "" }]);
       setInput("");
       setBusy(true);
+      followConversation.current = true;
+      const controller = new AbortController();
+      requestAbort.current = controller;
 
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "content-type": "application/json" },
+          signal: controller.signal,
           body: JSON.stringify({
             personaId: persona.id,
             messages: next,
@@ -163,9 +174,14 @@ export default function MealScene({ persona }: { persona: Persona }) {
           }
         }
       } catch (err) {
-        setError((err as Error).message);
+        if ((err as Error).name === "AbortError") {
+          setError("这一句先停在这里。");
+        } else {
+          setError((err as Error).message);
+        }
         setMessages((prev) => prev.slice(0, -1));
       } finally {
+        if (requestAbort.current === controller) requestAbort.current = null;
         setBusy(false);
       }
     },
@@ -291,7 +307,15 @@ export default function MealScene({ persona }: { persona: Persona }) {
               <div className="conversation-heading__note">可以说，也可以坐着</div>
             </div>
 
-            <div ref={scroller} className="conversation-scroll" aria-busy={busy}>
+            <div
+              ref={scroller}
+              className="conversation-scroll"
+              aria-busy={busy}
+              onScroll={(event) => {
+                const node = event.currentTarget;
+                followConversation.current = node.scrollHeight - node.scrollTop - node.clientHeight < 64;
+              }}
+            >
               {messages.map((message, index) => {
                 const pending = busy && index === messages.length - 1 && !message.content;
                 const guest = message.role === "user";
@@ -344,6 +368,11 @@ export default function MealScene({ persona }: { persona: Persona }) {
                     void send(input);
                   }
                 }}
+                onInput={(event) => {
+                  const field = event.currentTarget;
+                  field.style.height = "auto";
+                  field.style.height = String(Math.min(field.scrollHeight, 160)) + "px";
+                }}
                 rows={2}
                 placeholder="说点什么，或者就这样坐着。"
                 className="conversation-input"
@@ -352,6 +381,15 @@ export default function MealScene({ persona }: { persona: Persona }) {
               <button type="button" onClick={() => void send(input)} disabled={busy || !input.trim()} className="conversation-submit">
                 落下一句
               </button>
+              {busy && (
+                <button
+                  type="button"
+                  className="conversation-cancel"
+                  onClick={() => requestAbort.current?.abort()}
+                >
+                  先停在这里
+                </button>
+              )}
             </div>
             <p className="conversation-footnote">
               这顿饭结束就结束了，不会被记下来。{crisisActive ? " 你可以先离开桌边，去找一个真实的人。" : persona.grounding !== "primary" ? ` ${persona.groundingNote}` : ""}
